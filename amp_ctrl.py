@@ -427,7 +427,7 @@ def set_hyperion():
         hyperion_color +=1 
     elif hyperion_color == 2:
         hyperion_command = '/usr/bin/hyperion-remote -x'
-        v4l_ret = os.popen('/home/osmc/.kodi/userdata/scripts/hyp-v4l.sh &')
+        v4l_ret = os.popen('/home/osmc/etc/hyperion/hyp-v4l.sh &')
         msg = "BluRay"
         logger("    BluRay")
         GPIO.output(Out_ext1, GPIO.LOW)
