@@ -21,6 +21,9 @@ import struct
 import math
 import select
 
+
+run_path =  os.path.dirname(os.path.abspath(__file__))
+
 mute = False # Als global zu benutzen
 min_vol = 63  #63 für 63 Wiper Positionen, 33 für 33 Wiper Positionen
 volume = 35 # Als global zu benutzen
@@ -427,7 +430,8 @@ def set_hyperion():
         hyperion_color +=1 
     elif hyperion_color == 2:
         hyperion_command = '/usr/bin/hyperion-remote -x'
-        v4l_ret = os.popen('/home/osmc/etc/hyperion/hyp-v4l.sh &')
+        #v4l_ret = os.popen('/home/osmc/etc/hyperion/hyp-v4l.sh &')
+        v4l_ret = os.popen(run_path+'/hyp-v4l.sh &')
         msg = "BluRay"
         logger("    BluRay")
         GPIO.output(Out_ext1, GPIO.LOW)
