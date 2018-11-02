@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 
@@ -20,6 +20,8 @@ import fcntl
 import struct
 import math
 import select
+import subprocess
+import shlex
 
 
 run_path =  os.path.dirname(os.path.abspath(__file__))
@@ -123,7 +125,7 @@ def tcpServer(dummy, stop_event):
      else:
        conn.send("Des hob i kriegt: "+ data + "; is net ganga!")  # echo
      #stop_event.wait(0.2)
-   except socket.error, v:
+   except socket.error as v:
      logger("Auswurf: " + str(v))
      conn.close()
      stop_event.wait(0.2)
@@ -234,8 +236,8 @@ def set_vol_screen(dummy, stop_event):
         if vol_old != volume:
             timeout_vol_screen = 0
             screen_vol.set_priority("input")
-            zehner=volume/10
-            einer=volume-(zehner*10)
+            zehner = volume // 10 # Ganzzahlige Division
+            einer = volume % 10 # Modulo 10, gibt den Rest der Divison
             num1_widget.set_value(zehner)
             num2_widget.set_value(einer)
             vol_old = volume
@@ -283,6 +285,7 @@ def set_msg_screen(dummy, stop_event):
 
 
 def remote(data):
+    data = data.decode()
     global source
     if data in valid_sources:
         logger("Source set remotely to " + data)
@@ -317,7 +320,8 @@ def remote(data):
         #logger("Statusmelder")#
         valid = "zustand"
         #e_udp_sock.sendall("Statusmelder!")
-    else:
+    else:	
+        logger(data)
         logger("Invalid remote command!")
         valid = "nee"
     return(valid)
@@ -413,38 +417,34 @@ def set_source(src):
 def set_hyperion():
     global hyperion_color
     global msg
-    #hyperion_color_list = ["Off", "Kodi", "BluRay", "Schrank", "FF8600", "red" , "green"]
     if hyperion_color == 0:
-        hyperion_command = '/usr/bin/hyperion-remote -c black'
+        args = ['-c', 'black']
         msg = "Off"
         GPIO.output(Out_ext1, GPIO.LOW)
-        #hyperion_color = 0
         logger("   Off")
         hyperion_color += 1
     elif hyperion_color == 1:
-        hyperion_command = '/usr/bin/hyperion-remote -x'
+        args = ['-x']
         msg = "Kodi"
         GPIO.output(Out_ext1, GPIO.LOW)
-        #hyperion_color = 0
         logger("   Kodi")
         hyperion_color +=1 
     elif hyperion_color == 2:
-        hyperion_command = '/usr/bin/hyperion-remote -x'
-        #v4l_ret = os.popen('/home/osmc/etc/hyperion/hyp-v4l.sh &')
-        v4l_ret = os.popen(run_path+'/hyp-v4l.sh &')
+        args = ['-x']
+        v4l_ret = subprocess.Popen([run_path+'/hyp-v4l.sh', '&'])
         msg = "BluRay"
         logger("    BluRay")
         GPIO.output(Out_ext1, GPIO.LOW)
         hyperion_color += 1
     elif hyperion_color == 3:
-        v4l_ret = os.popen('/usr/bin/killall hyperion-v4l2')
-        hyperion_command = '/usr/bin/hyperion-remote -c ' + hyperion_color_list[hyperion_color+1]
+        v4l_ret = subprocess.call(['/usr/bin/killall',  'hyperion-v4l2'])
+        args = ['-c',  hyperion_color_list[hyperion_color+1]]
         msg = "Farbe: "+hyperion_color_list[hyperion_color+1]+" und Schrank"
         logger("   " + hyperion_color_list[hyperion_color+1]+" und Schrank")
         GPIO.output(Out_ext1, GPIO.HIGH)
         hyperion_color += 1
     elif hyperion_color > 3:
-        hyperion_command = '/usr/bin/hyperion-remote -c ' + hyperion_color_list[hyperion_color]
+        args = ['-c',  hyperion_color_list[hyperion_color]]
         msg = "Farbe: "+hyperion_color_list[hyperion_color]
         logger("   " + hyperion_color_list[hyperion_color])
         GPIO.output(Out_ext1, GPIO.LOW)
@@ -455,7 +455,10 @@ def set_hyperion():
     else:
         hyperion_color = 0
         return()
-    hyp = os.popen(hyperion_command)
+    cmd = ['/usr/bin/hyperion-remote']
+    cmd = cmd+args
+    print(cmd)
+    hyp = subprocess.call(cmd)
     return()  
   
   
@@ -483,7 +486,7 @@ def amp_power(inp):
             reboot_count = reboot_count + 1
             if reboot_count > 5:
                  logger("Rebooting Pi!")
-                 os.popen("reboot")
+                 subprocess.Popen("reboot")
     elif inp in valid_sources:
         #Hier geht's rein, wenn nicht mit "off" oder "Schneitzlberger" aufgerufen wurde
         amp_stat = GPIO.input(Out_pwr_rel) # nachschauen, ob der Preamp nicht evtl. schon läuft
