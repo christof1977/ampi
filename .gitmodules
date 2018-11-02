@@ -1,0 +1,3 @@
+[submodule "libby"]
+	path = libby
+	url = git@github.com:christof1977/libby.git

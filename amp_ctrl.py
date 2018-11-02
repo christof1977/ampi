@@ -21,7 +21,10 @@ import struct
 import math
 import select
 import subprocess
-import shlex
+from libby.logger import logger
+
+
+logging = True
 
 
 run_path =  os.path.dirname(os.path.abspath(__file__))
@@ -76,8 +79,7 @@ eth_addr='osmd.fritz.box'
 udp_port=5005 #An diesen Port wird der UDP-Server gebunden
 tcp_port=5015
 
-syslog.syslog("Starting UDP-Server at " + eth_addr + ":" + str(udp_port))
-print("Starting UDP-Server at " + eth_addr + ":" + str(udp_port))
+logger("Starting UDP-Server at " + eth_addr + ":" + str(udp_port),logging)
 e_udp_sock = socket.socket( socket.AF_INET,  socket.SOCK_DGRAM ) 
 e_udp_sock.bind( (eth_addr,udp_port) ) 
 
@@ -100,18 +102,18 @@ def tcpServer(dummy, stop_event):
  s.listen(1)
  conn, addr = s.accept()
  #s.setblocking(0)
- logger("Verbindung zu "+addr[0]+":"+str(addr[1]))
+ logger("Verbindung zu "+addr[0]+":"+str(addr[1]), logging)
  while(not stop_event.is_set()):
    try:
      #data = conn.recv(BUFFER_SIZE)
      #ready_to_read, ready_to_write, in_error = select.select([s],[],[])
      #print(ready_to_read)
-     logger("TCP auf Empfang")
+     logger("TCP auf Empfang", logging)
      #if ready_to_read[0]:
      data = conn.recv(1024)
-     logger("Horch was kommt von TCP rein: "+data)
+     logger("Horch was kommt von TCP rein: "+data, logging)
      #if not data: break
-     #print "received data:", data
+     #print("received data:", data)
      valid = remote(data)
      #print("Versuche zu senden")
      if valid == "ja":
@@ -120,20 +122,20 @@ def tcpServer(dummy, stop_event):
        tmp = hyperion_color - 1
        if tmp < 0: tmp = len(hyperion_color_list) - 1
        antwort = "Source="+ source + ";Volume="+str(volume)+";Farbe="+str(hyperion_color_list[tmp])+";Mute="+str(mute)
-       logger("TCP-Antwort: " + antwort)
+       logger("TCP-Antwort: " + antwort, logging)
        conn.send(antwort)  # echo
      else:
        conn.send("Des hob i kriegt: "+ data + "; is net ganga!")  # echo
      #stop_event.wait(0.2)
    except socket.error as v:
-     logger("Auswurf: " + str(v))
+     logger("Auswurf: " + str(v), logging)
      conn.close()
      stop_event.wait(0.2)
      conn, addr = s.accept()
-     logger("Verbindung zu "+addr[0]+":"+str(addr[1]))
- logger("Closing TCP Connection")
+     logger("Verbindung zu "+addr[0]+":"+str(addr[1]), logging)
+ logger("Closing TCP Connection", logging)
  conn.close()
- logger("Closing TCP Socket")
+ logger("Closing TCP Socket", logging)
  s.close()
  return
 
@@ -143,8 +145,8 @@ def signal_term_handler(signal, frame):
     global t_stop
     global lcd
     global conn
-    logger("Got " + str(signal))
-    logger("Closing UDP Socket")
+    logger("Got " + str(signal), logging)
+    logger("Closing UDP Socket", logging)
     e_udp_sock.close() #UDP-Server abschiessen
     amp_power("off") #Preamp schlafen legen
         
@@ -156,13 +158,9 @@ def signal_term_handler(signal, frame):
     so.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     so.send("foo")
     so.close()
-    logger("              So long sucker!") #Fein auf Wiedersehen sagen
+    logger("              So long sucker!", logging) #Fein auf Wiedersehen sagen
     sys.exit(0) #Und raus hier
 
-
-def logger(msg):
-    print(msg)
-    syslog.syslog(msg)
 
 
 # The function clear_int() should be called regularly to make sure,
@@ -216,9 +214,9 @@ def set_lcd():
    screen_clear = lcd.add_screen("Screen_clear")                                                                                        
    screen_clear.set_heartbeat("off")                                                                                               
    screen_clear.set_priority("background")
-  #screen_vol.set_timeout(3)
+   #screen_vol.set_timeout(3)
    #screen_vol.set_duration(3)
-   print("Leaving set_lcd")
+   logger("Leaving set_lcd",logging)
    return()
 
 
@@ -288,25 +286,25 @@ def remote(data):
     data = data.decode()
     global source
     if data in valid_sources:
-        logger("Source set remotely to " + data)
+        logger("Source set remotely to " + data, logging)
         amp_power(data)
         source = data
         valid = "ja"
     elif data == "hyperion":
-        logger("Remote hyperion control")
+        logger("Remote hyperion control", logging)
         set_hyperion()
         valid = "ja"
     elif data in valid_vol_cmd:
         set_volume(data)
         valid = "ja"
     elif data[:7] == "set_vol":
-        #logger("Set_vol to " + data[9:])
+        #logger("Set_vol to " + data[9:], logging)
         set_volume(data)
         valid = "ja"
     elif data == "dim_sw":
         global clear_display
         clear_display = not clear_display
-        logger("Dim remote command toggled") 
+        logger("Dim remote command toggled", logging) 
         #source = "Schneitzlberger"
         valid = "ja"
     elif data == "power":
@@ -314,15 +312,15 @@ def remote(data):
         global hyperion_color
         hyperion_color = 1
         set_hyperion()
-        logger("Aus is fuer heit!")
+        logger("Aus is fuer heit!", logging)
         valid = "ja"
     elif data == "zustand":
-        #logger("Statusmelder")#
+        #logger("Statusmelder", logging)#
         valid = "zustand"
         #e_udp_sock.sendall("Statusmelder!")
     else:	
-        logger(data)
-        logger("Invalid remote command!")
+        logger(data, logging)
+        logger("Invalid remote command!", logging)
         valid = "nee"
     return(valid)
 
@@ -352,16 +350,16 @@ def set_volume(cmd):
     elif cmd[:7] == "set_vol":
         mute = False
         try:
-            #logger("Debug cmd[9]: "+cmd[8:])
-            #logger("Debug cmd: "+cmd)
+            #logger("Debug cmd[9]: "+cmd[8:],logging)
+            #logger("Debug cmd: "+cmd, logging)
             pot_value = abs(int(cmd[8:]))
-            #logger("Debug vol: "+str(pot_value))
+            #logger("Debug vol: "+str(pot_value), logging)
             volume = pot_value
         except:
             pot_value = volume
     else:
         pot_value = volume
-    logger("Setting Volume: -" + str(pot_value) + "dB")
+    logger("Setting Volume: -" + str(pot_value) + "dB", logging)
     set_volume_pot(pot_value)
     return()
 
@@ -372,7 +370,7 @@ def set_volume_pot(pot_value):
         bus.write_byte(poti_device,pot_value)
         bus.write_byte(poti_device,pot_value+64)
     except:
-        logger("Couldn't set volume. Amp switched off?")
+        logger("Couldn't set volume. Amp switched off?", logging)
     i2c_iso(0) # Disable Volume I2C-Bus-Isolator
     return()
 
@@ -409,8 +407,7 @@ def set_source(src):
         msg = "Switching preamp off"
         #set_screen("Switching preamp off")
     else:
-        print("Komischer Elisenzustand")
-        syslog.syslog('Komischer Elisenzustand')
+        logger('Komischer Elisenzustand', logging)
     return()
 
 
@@ -421,32 +418,32 @@ def set_hyperion():
         args = ['-c', 'black']
         msg = "Off"
         GPIO.output(Out_ext1, GPIO.LOW)
-        logger("   Off")
+        logger("   Off", logging)
         hyperion_color += 1
     elif hyperion_color == 1:
         args = ['-x']
         msg = "Kodi"
         GPIO.output(Out_ext1, GPIO.LOW)
-        logger("   Kodi")
+        logger("   Kodi", logging)
         hyperion_color +=1 
     elif hyperion_color == 2:
         args = ['-x']
         v4l_ret = subprocess.Popen([run_path+'/hyp-v4l.sh', '&'])
         msg = "BluRay"
-        logger("    BluRay")
+        logger("    BluRay", logging)
         GPIO.output(Out_ext1, GPIO.LOW)
         hyperion_color += 1
     elif hyperion_color == 3:
         v4l_ret = subprocess.call(['/usr/bin/killall',  'hyperion-v4l2'])
         args = ['-c',  hyperion_color_list[hyperion_color+1]]
         msg = "Farbe: "+hyperion_color_list[hyperion_color+1]+" und Schrank"
-        logger("   " + hyperion_color_list[hyperion_color+1]+" und Schrank")
+        logger("   " + hyperion_color_list[hyperion_color+1]+" und Schrank", logging)
         GPIO.output(Out_ext1, GPIO.HIGH)
         hyperion_color += 1
     elif hyperion_color > 3:
         args = ['-c',  hyperion_color_list[hyperion_color]]
         msg = "Farbe: "+hyperion_color_list[hyperion_color]
-        logger("   " + hyperion_color_list[hyperion_color])
+        logger("   " + hyperion_color_list[hyperion_color], logging)
         GPIO.output(Out_ext1, GPIO.LOW)
         if hyperion_color == len(hyperion_color_list)-1:
            hyperion_color = 0
@@ -457,7 +454,6 @@ def set_hyperion():
         return()
     cmd = ['/usr/bin/hyperion-remote']
     cmd = cmd+args
-    print(cmd)
     hyp = subprocess.call(cmd)
     return()  
   
@@ -480,12 +476,12 @@ def amp_power(inp):
         #set_screen("Preamp off")
         bus.write_byte_data(mcp_device,mcp_olatb,0x00)  # source Schneitzlberger, damit Preamp von Endstufe getrennt wird
         GPIO.output(Out_pwr_rel, GPIO.LOW) # Switch amp power supply off
-        logger("Switch amp off")
+        logger("Switch amp off", logging)
         set_source(inp) #Wird eigentlich nur noch einmal aufgerufen, damit im Display der source angezeigt wird
         if inp == "off":
             reboot_count = reboot_count + 1
             if reboot_count > 5:
-                 logger("Rebooting Pi!")
+                 logger("Rebooting Pi!", logging)
                  subprocess.Popen("reboot")
     elif inp in valid_sources:
         #Hier geht's rein, wenn nicht mit "off" oder "Schneitzlberger" aufgerufen wurde
@@ -500,7 +496,7 @@ def amp_power(inp):
             #set_screen("Switching preamp on")
             bus.write_byte_data(mcp_device,mcp_olatb,0x00)  # source Schneitzlberger, damit Preamp von Endstufe getrennt wird
             GPIO.output(Out_pwr_rel, GPIO.HIGH) # Switch amp power supply on
-            logger("Switching amp on")
+            logger("Switching amp on", logging)
             time.sleep(2)
             i2c_iso(1) # Enable Volume I2C-Bus-Isolator
             if min_vol == 33:
@@ -512,11 +508,11 @@ def amp_power(inp):
             set_source(inp) #Eingang auswählen
         else:
             #Der Preamp läuft wohl schon, also muss nur noch der Eingang gesetzt werden
-            logger("Amp is already running")
+            logger("Amp is already running", logging)
             set_source(inp) #Eingang auswählen
     else:
         #Hier geht's rein, wenn der source-Wert nicht gültig ist
-        logger("Ampswitch else ... nothing happened.")
+        logger("Ampswitch else ... nothing happened.", logging)
     return()
 
   
@@ -596,29 +592,25 @@ def GpioInt(channel): #Interrupt Service Routine
     if channel == 37: #Interrupt from MCP
         src = get_mcp_int()
         if src == "Nixtun":
-            #print("Interrupt 0x00")
-            #syslog.syslog("Interrupt 0x00")
             return()
         elif src == "Error":
-            logger("An error occured")
+            logger("An error occured", logging)
             return()
         elif src == "dim_sw":
             global clear_display
             clear_display = not clear_display
-            logger("Dim switch toggled") 
-            #logger("Switching amp on (from switch)")
-            #amp_power("off")
+            logger("Dim switch toggled", logging) 
             return()
         elif src in valid_sources:
-            logger("Switching input to " + src)
+            logger("Switching input to " + src, logging)
             amp_power(src)
             return()
         elif src == "hyperion":
-            logger("Switching hyperion to ")
+            logger("Switching hyperion to ", logging)
             set_hyperion()
             return()
     #elif channel == 7: # vol_down key pressed
-    #    logger("Key volume down")
+    #    logger("Key volume down", logging)
     #    set_volume("vol_down")
     #    time.sleep(0.2)
     #    while GPIO.input(7) == True:
@@ -626,7 +618,7 @@ def GpioInt(channel): #Interrupt Service Routine
     #        time.sleep(0.05)
     #    return()
     elif channel == 36: # vol_up key pressed
-        logger("Key volume up")
+        logger("Key volume up", logging)
         if GPIO.input(7):
              set_volume("vol_up")
         else:
@@ -638,11 +630,11 @@ def GpioInt(channel): #Interrupt Service Routine
         #    time.sleep(0.05)
         return()
     elif channel == 15: # mute key pressed
-        logger("Key mute")
+        logger("Key mute", logging)
         set_volume("mute")
         return()
     else:
-        logger("An error orccured during GpioInt("+str(channel)+")")
+        logger("An error orccured during GpioInt("+str(channel)+")", logging)
         return()
 
 
@@ -651,7 +643,7 @@ def main():
     global t_stop 
     
    
-    logger("Starting amplifier control service")
+    logger("Starting amplifier control service", logging)
    
     #Starte handler für SIGTERM (kill -15), also normales beenden
     #Handler wird aufgerufen, wenn das Programm beendet wird, z.B. durch systemctl
