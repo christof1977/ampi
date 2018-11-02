@@ -1,57 +1,47 @@
-#!/usr/bin/env python2.7
-
+#!/usr/bin/env python3
 #coding: utf8
-import pylirc
-import remoteUdp
+
+import lirc
+from libby import remoteAmpiUdp
 import socket
 import signal
 import sys
-import syslog
+from libby.logger import logger
+
+logging = True
+
 
 def signal_term_handler(signal, frame):
     global s_udp_sock
-    log = "Got " + str(signal)
-    print(log)
-    syslog.syslog(log)
-    log = "Closing UDP Socket"
-    print(log)
-    syslog.syslog(log)
+    logger("Got " + str(signal), logging)
+    logger("Closing UDP Socket", logging)
     s_udp_sock.close()
     
-    log = "Closing lirc connection"
-    print(log)
-    syslog.syslog(log)
-    pylirc.exit()
+    logger("Closing lirc connection", logging)
+    lirc.exit()
 
-    log = "Bye"
-    print(log)
-    syslog.syslog(log)
+    logger("So long, sucker!", logging)
 
     sys.exit(0)
  
 
 def main():
-    log = "Starting amplifier lirc remote control service"
-    print(log)
-    syslog.syslog(log)
+    logger("Starting amplifier lirc remote control service", logging)
 
     global s_udp_sock
     signal.signal(signal.SIGTERM, signal_term_handler)
-    #addr = '127.0.0.1'
     addr = 'osmd.fritz.box'
     port = 5005
     s_udp_sock = socket.socket( socket.AF_INET,  socket.SOCK_DGRAM )
-    sockid = pylirc.init("lircsock")
-    allow = pylirc.blocking(1)
+    sockid = lirc.init("lircsock")
+    allow = lirc.set_blocking(True, sockid)
     
     while True:
         try:
-            codeIR_list = pylirc.nextcode()
+            codeIR_list = lirc.nextcode()
             if codeIR_list != [] and codeIR_list != None:
-                remoteUdp.sende(s_udp_sock, addr, port, codeIR_list[0])
-                log = "Sending command " + codeIR_list[0]
-                print(log)
-                syslog.syslog(log)
+                remoteAmpiUdp.sende(s_udp_sock, addr, port, codeIR_list[0])
+                logger("Sending command " + codeIR_list[0], logging)
                 codeIR_list = []
         except KeyboardInterrupt:
             signal_term_handler(99, "")
