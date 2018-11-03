@@ -37,7 +37,6 @@ reboot_count = 0
 
 #Listen der erlaubten Kommandos
 valid_sources = ['CD', 'Schneitzlberger', 'Portable', 'Hilfssherriffeingang', 'Bladdnspiela', 'Himbeer314']
-#valid_vol_cmd = ['vol_up', 'vol_down', 'mute']
 valid_vol_cmd = ['up', 'down', 'mute']
 source = "Schneitzlberger"
 msg = "Schneitzlberger"
@@ -45,7 +44,6 @@ clear_display = 0
 
 
 # Liste der Hyperion-Farben
-#hyperion_color_list = ["BluRay", "green", "red", "FF8600", "Schrank" , "clear"]
 hyperion_color_list = ["Off", "Kodi", "BluRay", "Schrank", "FF8600", "red" , "green"]
 hyperion_color = 1 # Als global zu benutzen
 
@@ -295,7 +293,7 @@ def remote(data):
         return(valid)
     global source
     if(jcmd['Aktion'] == "Input"):
-        logger("Input:", jcmd['Parameter'],logging)
+        logger("Input: " + jcmd['Parameter'], logging)
         if jcmd['Parameter'] in valid_sources:
             logger("Source set remotely to " + data, logging)
             amp_power(jcmd['Parameter'])
@@ -320,7 +318,7 @@ def remote(data):
             logger("Dim remote command toggled", logging) 
             #source = "Schneitzlberger"
             valid = "ja"
-        elif jcmd['Parameter'] == "amp_sw":
+        elif jcmd['Parameter'] == "power":
             amp_power("off")
             global hyperion_color
             hyperion_color = 1
