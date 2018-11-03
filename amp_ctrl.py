@@ -23,6 +23,7 @@ import select
 import subprocess
 import json
 from libby.logger import logger
+from kodijson import Kodi
 
 
 logging = True
@@ -282,6 +283,17 @@ def set_msg_screen(dummy, stop_event):
     return()
 
 
+def stop_kodi():
+    try:
+        kodi = Kodi("http://"+eth_addr+"/jsonrpc")
+        playerid = kodi.Player.GetActivePlayers()["result"][0]["playerid"]
+        result = kodi.Player.Stop({"playerid": playerid})
+        logger("Kodi aus!", logging)
+    except Exception as e:
+        logger("Beim Kodi stoppen is wos passiert: " + str(e), logging)
+
+
+
 def remote(data):
     data = data.decode()
     try:
@@ -323,6 +335,7 @@ def remote(data):
             global hyperion_color
             hyperion_color = 1
             set_hyperion()
+            stop_kodi()
             logger("Aus is fuer heit!", logging)
             valid = "ja"
         else:
