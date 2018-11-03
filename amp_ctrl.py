@@ -21,6 +21,7 @@ import struct
 import math
 import select
 import subprocess
+import json
 from libby.logger import logger
 
 
@@ -36,7 +37,8 @@ reboot_count = 0
 
 #Listen der erlaubten Kommandos
 valid_sources = ['CD', 'Schneitzlberger', 'Portable', 'Hilfssherriffeingang', 'Bladdnspiela', 'Himbeer314']
-valid_vol_cmd = ['vol_up', 'vol_down', 'mute']
+#valid_vol_cmd = ['vol_up', 'vol_down', 'mute']
+valid_vol_cmd = ['up', 'down', 'mute']
 source = "Schneitzlberger"
 msg = "Schneitzlberger"
 clear_display = 0
@@ -156,7 +158,7 @@ def signal_term_handler(signal, frame):
     so = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     so.connect((eth_addr, tcp_port))
     so.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    so.send("foo")
+    so.send("foo".encode())
     so.close()
     logger("              So long sucker!", logging) #Fein auf Wiedersehen sagen
     sys.exit(0) #Und raus hier
@@ -284,40 +286,52 @@ def set_msg_screen(dummy, stop_event):
 
 def remote(data):
     data = data.decode()
+    try:
+        jcmd = json.loads(data)
+        print(jcmd)
+    except:
+        logger("Das ist mal kein JSON, pff!", logging)
+        valid = "nee"
+        return(valid)
     global source
-    if data in valid_sources:
-        logger("Source set remotely to " + data, logging)
-        amp_power(data)
-        source = data
-        valid = "ja"
-    elif data == "hyperion":
+    if(jcmd['Aktion'] == "Input"):
+        print("Input:", jcmd['Parameter'])
+        if jcmd['Parameter'] in valid_sources:
+            logger("Source set remotely to " + data, logging)
+            amp_power(jcmd['Parameter'])
+            source = jcmd['Parameter']
+            valid = "ja"
+    elif(jcmd['Aktion'] == "hyperion"):
         logger("Remote hyperion control", logging)
         set_hyperion()
         valid = "ja"
-    elif data in valid_vol_cmd:
-        set_volume(data)
-        valid = "ja"
-    elif data[:7] == "set_vol":
+    elif(jcmd['Aktion'] == "Volume"):
+        if jcmd['Parameter'] in valid_vol_cmd:
+            set_volume(jcmd['Parameter'])
+            valid = "ja"
+    elif data[:7] == "set_vol": # Ich habe keine Ahnung, was es mit dem Zweig auf sich hat!
         #logger("Set_vol to " + data[9:], logging)
         set_volume(data)
         valid = "ja"
-    elif data == "dim_sw":
-        global clear_display
-        clear_display = not clear_display
-        logger("Dim remote command toggled", logging) 
-        #source = "Schneitzlberger"
-        valid = "ja"
-    elif data == "power":
-        amp_power("off")
-        global hyperion_color
-        hyperion_color = 1
-        set_hyperion()
-        logger("Aus is fuer heit!", logging)
-        valid = "ja"
+    elif(jcmd['Aktion'] == "Switch"):
+        if jcmd['Parameter'] == "dim_sw":
+            global clear_display
+            clear_display = not clear_display
+            logger("Dim remote command toggled", logging) 
+            #source = "Schneitzlberger"
+            valid = "ja"
+        elif jcmd['Parameter'] == "amp_sw":
+            amp_power("off")
+            global hyperion_color
+            hyperion_color = 1
+            set_hyperion()
+            logger("Aus is fuer heit!", logging)
+            valid = "ja"
+        else:
+            logger("Des bassd net.", logging)
+            valid = "nee"
     elif data == "zustand":
-        #logger("Statusmelder", logging)#
         valid = "zustand"
-        #e_udp_sock.sendall("Statusmelder!")
     else:	
         logger(data, logging)
         logger("Invalid remote command!", logging)
@@ -327,33 +341,26 @@ def remote(data):
 def set_volume(cmd):
     global mute
     global volume
-    #global min_vol
     if cmd == "mute":
         mute = not mute
-        #print("Mute: " + str(mute) + " Volume: " + str(volume))
         if mute == True:
             pot_value = min_vol
         else:
             pot_value = volume
-    elif cmd == "vol_up":
+    elif cmd == "up":
         mute = False
         if volume > 0:
             volume -= 1
-        #print("Mute: " + str(mute) + " Volume: " + str(volume))
         pot_value = volume
-    elif cmd == "vol_down":
+    elif cmd == "down":
         mute = False
         if volume < min_vol:
             volume +=1
-        #print("Mute: " + str(mute) + " Volume: " + str(volume))
         pot_value = volume
     elif cmd[:7] == "set_vol":
         mute = False
         try:
-            #logger("Debug cmd[9]: "+cmd[8:],logging)
-            #logger("Debug cmd: "+cmd, logging)
             pot_value = abs(int(cmd[8:]))
-            #logger("Debug vol: "+str(pot_value), logging)
             volume = pot_value
         except:
             pot_value = volume
@@ -620,14 +627,10 @@ def GpioInt(channel): #Interrupt Service Routine
     elif channel == 36: # vol_up key pressed
         logger("Key volume up", logging)
         if GPIO.input(7):
-             set_volume("vol_up")
+             set_volume("up")
         else:
-             set_volume("vol_down")
-        #set_volume("vol_up")
+             set_volume("down")
         time.sleep(0.1)
-        #while GPIO.input(36) == True:
-        #    set_volume("vol_up")
-        #    time.sleep(0.05)
         return()
     elif channel == 15: # mute key pressed
         logger("Key mute", logging)
