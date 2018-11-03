@@ -295,7 +295,7 @@ def remote(data):
         return(valid)
     global source
     if(jcmd['Aktion'] == "Input"):
-        print("Input:", jcmd['Parameter'])
+        logger("Input:", jcmd['Parameter'],logging)
         if jcmd['Parameter'] in valid_sources:
             logger("Source set remotely to " + data, logging)
             amp_power(jcmd['Parameter'])

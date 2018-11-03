@@ -7,6 +7,7 @@ import socket
 import signal
 import sys
 from libby.logger import logger
+import json
 
 logging = True
 
@@ -23,7 +24,14 @@ def signal_term_handler(signal, frame):
     logger("So long, sucker!", logging)
 
     sys.exit(0)
- 
+
+
+def lirc2json(cmd):
+    cmd = cmd.split("_")
+    cmd = { "Aktion": cmd[0], "Parameter": cmd[1]}
+    json_cmd = json.dumps(cmd)
+    return json_cmd
+
 
 def main():
     logger("Starting amplifier lirc remote control service", logging)
@@ -39,9 +47,10 @@ def main():
     while True:
         try:
             codeIR_list = lirc.nextcode()
-            if codeIR_list != [] and codeIR_list != None:
-                remoteAmpiUdp.sende(s_udp_sock, addr, port, codeIR_list[0])
-                logger("Sending command " + codeIR_list[0], logging)
+            if(codeIR_list != [] and codeIR_list != None):
+                json_cmd = lirc2json(codeIR_list[0])
+                remoteAmpiUdp.sende(s_udp_sock, addr, port, json_cmd)
+                logger("Sending command " + json_cmd, logging)
                 codeIR_list = []
         except KeyboardInterrupt:
             signal_term_handler(99, "")
