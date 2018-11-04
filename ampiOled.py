@@ -42,6 +42,7 @@ class AmpiOled:
         #self.msgScreenT.start()
 
         self.clearScreenT = threading.Thread(target=self.clearScreen, args=(1, self.tStop))
+        self.clearScreenT.setDaemon(True)
         self.clearScreenT.start()
 
         logger("Leaving set_lcd",logging)
@@ -76,7 +77,7 @@ class AmpiOled:
 
     def findX(self, s):
         l = self.oledCols - len(s)
-        return(l/2)
+        return(l//2)
 
 
     def initVolScreen(self):
@@ -88,9 +89,13 @@ class AmpiOled:
     def initMsgScreen(self):
         self.screenMsg.set_priority("alert")
         line1 = "Los geht's"
-        line3 = "Aff"
+        line2 = "schon wieder"
+        line3 = "Du"
+        line4 = "Aff"
         self.screenMsgL1 = self.screenMsg.add_string_widget("string_widget_l1", line1, x=self.findX(line1), y=1)
+        self.screenMsgL2 = self.screenMsg.add_string_widget("string_widget_l2", line2, x=self.findX(line2), y=2)
         self.screenMsgL3 = self.screenMsg.add_string_widget("string_widget_l3", line3, x=self.findX(line3), y=3)
+        self.screenMsgL4 = self.screenMsg.add_string_widget("string_widget_l4", line4, x=self.findX(line4), y=4)
 
 
     def setVolScreen(self, value):
@@ -108,26 +113,32 @@ class AmpiOled:
         self.screenVolNum1.set_value(zehner)
         self.screenVolNum2.set_value(einer)
 
-    def setMsgScreen(self, msg):
+    def setMsgScreen(self, l1="", l2="", l3="", l4=""):
         self.timeoutMsgScreen = 0
         self.screenMsg.set_priority("alert")
-        self.screenMsgL1.set_x(self.findX(msg[0]))
-        self.screenMsgL3.set_x(self.findX(msg[2]))
-        self.screenMsgL1.set_text(msg[0])
-        self.screenMsgL3.set_text(msg[2])
-        msg_old = msg
+        self.screenMsgL1.set_x(self.findX(l1))
+        self.screenMsgL2.set_x(self.findX(l2))
+        self.screenMsgL3.set_x(self.findX(l3))
+        self.screenMsgL4.set_x(self.findX(l4))
+        self.screenMsgL1.set_text(l1)
+        self.screenMsgL2.set_text(l2)
+        self.screenMsgL3.set_text(l3)
+        self.screenMsgL4.set_text(l4)
 
 
 def main():
     oled = AmpiOled()
-    time.sleep(1)
-    oled.setVolScreen(17)
-    time.sleep(7)
-    oled.toggleBlankScreen()
-    time.sleep(3)
-    oled.toggleBlankScreen()
+    #time.sleep(1)
+    #oled.setVolScreen(17)
+    #oled.toggleBlankScreen()
+    #time.sleep(3)
+    #oled.toggleBlankScreen()
     time.sleep(2)
-    oled.setMsgScreen(["So ein", None, "Scheiss!", None])
+    oled.setMsgScreen(l2="Zwo", l4="Fünf")
+    time.sleep(5)
+
+    oled.setMsgScreen(l1="Eins", l2="Nix", l3="Drei", l4="Auch nix")
+    time.sleep(5)
 
 
 
