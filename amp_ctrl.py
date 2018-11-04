@@ -14,7 +14,6 @@ import socket
 import time
 import threading
 from threading import Thread
-from lcdproc.server import Server
 import signal
 import fcntl
 import struct
@@ -24,6 +23,7 @@ import subprocess
 import json
 from libby.logger import logger
 from kodijson import Kodi
+from ampiOled import AmpiOled
 
 
 logging = True
@@ -31,6 +31,7 @@ logging = True
 
 run_path =  os.path.dirname(os.path.abspath(__file__))
 
+oled = AmpiOled()
 mute = False # Als global zu benutzen
 min_vol = 63  #63 für 63 Wiper Positionen, 33 für 33 Wiper Positionen
 volume = 35 # Als global zu benutzen
@@ -41,7 +42,7 @@ valid_sources = ['CD', 'Schneitzlberger', 'Portable', 'Hilfssherriffeingang', 'B
 valid_vol_cmd = ['up', 'down', 'mute']
 source = "Schneitzlberger"
 msg = "Schneitzlberger"
-clear_display = 0
+#clear_display = 0
 
 
 # Liste der Hyperion-Farben
@@ -49,17 +50,17 @@ hyperion_color_list = ["Off", "Kodi", "BluRay", "Schrank", "FF8600", "red" , "gr
 hyperion_color = 1 # Als global zu benutzen
 
 
-mcp_device = 0x20 # Device Adresse (A0-A2)                           
-mcp_iodira = 0x00 # Pin Register fuer die Richtung Port A             
-mcp_iodirb = 0x01 # Pin Register fuer die Richtung Port B            
-mcp_olatb = 0x15 # Register fuer Ausgabe (GPB)                       
-mcp_gpioa = 0x12 # Register fuer Eingabe (GPA)     
+mcp_device = 0x20 # Device Adresse (A0-A2)
+mcp_iodira = 0x00 # Pin Register fuer die Richtung Port A
+mcp_iodirb = 0x01 # Pin Register fuer die Richtung Port B
+mcp_olatb = 0x15 # Register fuer Ausgabe (GPB)
+mcp_gpioa = 0x12 # Register fuer Eingabe (GPA)
 mcp_gpintena = 0x04 # Interrupt Enable Reigster (GPA)
 mcp_defvala = 0x06 # Default Comparison Value for Interrupt (GPA)
 mcp_intcona = 0x08 # Intertupt on change control register (GPA)
 mcp_intcapa = 0x10 # Register INTCAPA
-   
-bus = smbus.SMBus(1) # Rev 2 Pi  
+
+bus = smbus.SMBus(1) # Rev 2 Pi
 
 poti_device = 0x2f  #I2C-Adresse DS1882
 
@@ -72,17 +73,14 @@ In_vol_down = 7
 In_vol_up = 36
 In_mute = 15
 
-timeout_vol_screen = 0
-timeout_msg_screen = 0
-
 
 eth_addr='osmd.fritz.box'
 udp_port=5005 #An diesen Port wird der UDP-Server gebunden
 tcp_port=5015
 
 logger("Starting UDP-Server at " + eth_addr + ":" + str(udp_port),logging)
-e_udp_sock = socket.socket( socket.AF_INET,  socket.SOCK_DGRAM ) 
-e_udp_sock.bind( (eth_addr,udp_port) ) 
+e_udp_sock = socket.socket( socket.AF_INET,  socket.SOCK_DGRAM )
+e_udp_sock.bind( (eth_addr,udp_port) )
 
 
 #def get_ip_address(ifname):
@@ -150,7 +148,7 @@ def signal_term_handler(signal, frame):
     logger("Closing UDP Socket", logging)
     e_udp_sock.close() #UDP-Server abschiessen
     amp_power("off") #Preamp schlafen legen
-        
+
     t_stop.set() #Threads ordnungsgemäss beenden
 
     GPIO.cleanup()   #GPIOs aufräumen
@@ -170,7 +168,7 @@ def signal_term_handler(signal, frame):
 # It is called as a thread, the while loop runs every three seconds.
 def clear_int(dummy, stop_event):
     global reboot_count
-    while(not stop_event.is_set()): 
+    while(not stop_event.is_set()):
         # Clear interrupts of MCP
         intcap = bus.read_byte_data(mcp_device,mcp_intcapa)  # Read Intcap-Register from MCP23017
         gpioa = bus.read_byte_data(mcp_device,mcp_gpioa)  # Read Intcap-Register from MCP23017
@@ -181,106 +179,6 @@ def clear_int(dummy, stop_event):
         reboot_count = 0 # Clear reboot counter
         stop_event.wait(3)
         pass
-   
-
-def clear_screen(dummy, stop_event):
-    global timeout_vol_screen
-    global timeout_msg_screen
-    while(not stop_event.is_set()):
-        if clear_display == 1:
-            screen_clear.set_priority("input")
-        else:
-            screen_clear.set_priority("hidden")
-        if timeout_vol_screen > 15:
-            screen_vol.set_priority("background")
-        if timeout_msg_screen > 15:
-            screen_msg.set_priority("background")
-        stop_event.wait(1)
-        pass
-
-
-def set_lcd():
-   global lcd
-   global screen_vol
-   global screen_msg
-   global screen_clear
-   lcd = Server("127.0.0.1", debug=False)                                                                                     
-   lcd.start_session()
-   screen_vol = lcd.add_screen("Screen_vol")                                                                                        
-   screen_vol.set_heartbeat("off")                                                                                               
-   screen_vol.set_priority("background")
-   screen_msg = lcd.add_screen("Screen_msg")                                                                                        
-   screen_msg.set_heartbeat("off")                                                                                               
-   screen_msg.set_priority("background")
-   screen_clear = lcd.add_screen("Screen_clear")                                                                                        
-   screen_clear.set_heartbeat("off")                                                                                               
-   screen_clear.set_priority("background")
-   #screen_vol.set_timeout(3)
-   #screen_vol.set_duration(3)
-   logger("Leaving set_lcd",logging)
-   return()
-
-
-def set_vol_screen(dummy, stop_event):
-    global screen_vol
-    global timeout_vol_screen
-    zehner=volume/10
-    einer=volume-(zehner*10)
-    num1_widget = screen_vol.add_number_widget("Num1Wid", x=8, value=zehner)
-    num2_widget = screen_vol.add_number_widget("Num2Wid", x=11, value=einer)
-    vol_old = volume
-    mute_old = mute
-    screen_vol.set_priority("input")
-    while(not stop_event.is_set()): 
-        if vol_old != volume:
-            timeout_vol_screen = 0
-            screen_vol.set_priority("input")
-            zehner = volume // 10 # Ganzzahlige Division
-            einer = volume % 10 # Modulo 10, gibt den Rest der Divison
-            num1_widget.set_value(zehner)
-            num2_widget.set_value(einer)
-            vol_old = volume
-        elif mute_old != mute:
-            timeout_vol_screen = 0
-            screen_vol.set_priority("input")
-            if mute == False:
-                zehner=volume/10
-                einer=volume-(zehner*10)
-            else:
-                zehner = 6
-                einer = 3
-            num1_widget.set_value(zehner)
-            num2_widget.set_value(einer)
-            mute_old = mute
-        else:
-            timeout_vol_screen = timeout_vol_screen + 1
-            if timeout_vol_screen > 200:
-                timeout_vol_screen = 15
-        stop_event.wait(0.15)
-        pass
-    
-
-def set_msg_screen(dummy, stop_event):
-    global screen_msg
-    global timeout_msg_screen
-    msg_old = msg
-    screen_msg.set_priority("alert")
-    string_widget_l1 = screen_msg.add_string_widget("string_widget_l1", "     Eingang:", 1, 1)
-    string_widget_l3 = screen_msg.add_string_widget("string_widget_l3", msg, 1, 3)
-    while(not stop_event.is_set()): 
-        if msg_old != msg:
-            timeout_msg_screen = 0
-            screen_msg.set_priority("alert")
-            string_widget_l1.set_text("     Eingang:")
-            string_widget_l3.set_text(msg)
-            msg_old = msg
-        else:
-            timeout_msg_screen = timeout_msg_screen + 1
-            if timeout_msg_screen > 200:
-                timeout_msg_screen = 15
-        stop_event.wait(0.15)
-        pass
-    return()
 
 
 def stop_kodi():
@@ -327,7 +225,7 @@ def remote(data):
         if jcmd['Parameter'] == "dim_sw":
             global clear_display
             clear_display = not clear_display
-            logger("Dim remote command toggled", logging) 
+            logger("Dim remote command toggled", logging)
             #source = "Schneitzlberger"
             valid = "ja"
         elif jcmd['Parameter'] == "power":
@@ -343,7 +241,7 @@ def remote(data):
             valid = "nee"
     elif data == "zustand":
         valid = "zustand"
-    else:	
+    else:
         logger(data, logging)
         logger("Invalid remote command!", logging)
         valid = "nee"
@@ -352,6 +250,7 @@ def remote(data):
 def set_volume(cmd):
     global mute
     global volume
+    global oled
     if cmd == "mute":
         mute = not mute
         if mute == True:
@@ -378,6 +277,7 @@ def set_volume(cmd):
     else:
         pot_value = volume
     logger("Setting Volume: -" + str(pot_value) + "dB", logging)
+    oled.setVolScreen(pot_value)
     set_volume_pot(pot_value)
     return()
 
@@ -394,36 +294,29 @@ def set_volume_pot(pot_value):
 
 
 def set_source(src):
-    global msg
+    global oled
     if src == "00000000":
         return()
     elif src == "Schneitzlberger":
         bus.write_byte_data(mcp_device,mcp_olatb,0x00)
-        msg = "  Schneitzlberger"
-        #set_screen("  Schneitzlberger")
+        oled.setMsgScreen(l1="Eingang", l3="Schneitzlberger")
     elif src == "CD":
         bus.write_byte_data(mcp_device,mcp_olatb,0x28)
-        msg = "         CD"
-        #set_screen("         CD")
+        oled.setMsgScreen(l1="Eingang", l3="CD")
     elif src == "Portable":
         bus.write_byte_data(mcp_device,mcp_olatb,0x24)
-        msg = "      Portable" 
-        #set_screen("      Portable")
+        oled.setMsgScreen(l1="Eingang", l3="Portable")
     elif src == "Hilfssherriffeingang":
         bus.write_byte_data(mcp_device,mcp_olatb,0x22)
-        msg = "   Hilfssherriff"
-        #set_screen("   Hilfssherriff")
+        oled.setMsgScreen(l1="Eingang", l3="Hilfssherriff")
     elif src == "Bladdnspiela":
         bus.write_byte_data(mcp_device,mcp_olatb,0x21)
-        msg = "    Bladdnspiela"
-        #set_screen("    Bladdnspiela")
+        oled.setMsgScreen(l1="Eingang", l3="Bladdnspiela")
     elif src == "Himbeer314":
         bus.write_byte_data(mcp_device,mcp_olatb,0x30)
-        msg = "     Himbeer314"
-        #set_screen("     Himbeer314")
+        oled.setMsgScreen(l1="Eingang", l3="Himbeeren")
     elif src == "off":
-        msg = "Switching preamp off"
-        #set_screen("Switching preamp off")
+        oled.setMsgScreen(l1="Eingang", l3="Vorverstärker aus")
     else:
         logger('Komischer Elisenzustand', logging)
     return()
@@ -443,7 +336,7 @@ def set_hyperion():
         msg = "Kodi"
         GPIO.output(Out_ext1, GPIO.LOW)
         logger("   Kodi", logging)
-        hyperion_color +=1 
+        hyperion_color +=1
     elif hyperion_color == 2:
         args = ['-x']
         v4l_ret = subprocess.Popen([run_path+'/hyp-v4l.sh', '&'])
@@ -473,9 +366,9 @@ def set_hyperion():
     cmd = ['/usr/bin/hyperion-remote']
     cmd = cmd+args
     hyp = subprocess.call(cmd)
-    return()  
-  
-  
+    return()
+
+
 def i2c_iso(status):
     # Mit dieser Funktion wird der DS1882 auf den I2C-Bus geschaltet (1) oder vom Bus getrennt (0)
     if status == 1:
@@ -484,7 +377,7 @@ def i2c_iso(status):
         GPIO.output(Out_i2c_iso, GPIO.LOW) #DS1182 vom Bus trennen
     return()
 
-  
+
 def amp_power(inp):
     global msg
     global reboot_count
@@ -533,9 +426,9 @@ def amp_power(inp):
         logger("Ampswitch else ... nothing happened.", logging)
     return()
 
-  
+
 def set_hw():
-   
+
     #set up GPIOs
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BOARD) # Nutzung der Pin-Nummerierung, nicht GPIO-Nummern
@@ -546,7 +439,7 @@ def set_hw():
     GPIO.output(Out_ext1, GPIO.LOW) # Switch amp power supply off
     GPIO.output(Out_pwr_rel, GPIO.LOW) # Switch amp power supply off
     GPIO.output(Out_i2c_iso, GPIO.LOW) # Disable Volume I2C-Bus-Isolator
-    
+
 
     # Setze Port A Interrupt
     bus.write_byte_data(mcp_device,mcp_gpintena,0xFF)
@@ -574,7 +467,7 @@ def set_hw():
 
     # Definiere alle GPB Pins als Output
     bus.write_byte_data(mcp_device,mcp_iodirb,0x00)
-   
+
 
 def get_mcp_int():
     #Diese Funktion wird aufgerufen, wenn ein Interrupt vom MCP eintrudelt. Als erstes
@@ -603,7 +496,7 @@ def get_mcp_int():
     else:
        ret = "Error"
     return(ret)
-   
+
 
 def GpioInt(channel): #Interrupt Service Routine
     #This function is called, if an interrupt (GPIO) occurs; input parameter is the pin, where the interrupt occured; not needed here
@@ -617,7 +510,7 @@ def GpioInt(channel): #Interrupt Service Routine
         elif src == "dim_sw":
             global clear_display
             clear_display = not clear_display
-            logger("Dim switch toggled", logging) 
+            logger("Dim switch toggled", logging)
             return()
         elif src in valid_sources:
             logger("Switching input to " + src, logging)
@@ -652,20 +545,20 @@ def GpioInt(channel): #Interrupt Service Routine
         return()
 
 
-def main():                                                                                                                    
+def main():
     #global e_udp_sock
-    global t_stop 
-    
-   
+    global t_stop
+    global oled
+
+
     logger("Starting amplifier control service", logging)
-   
+
     #Starte handler für SIGTERM (kill -15), also normales beenden
     #Handler wird aufgerufen, wenn das Programm beendet wird, z.B. durch systemctl
     signal.signal(signal.SIGTERM, signal_term_handler)
 
-   	
+
     set_hw()    #Init of GPIOs and MCP port expander
-    set_lcd()    #Init of LCD-screen
 
     #amp_status = True
     amp_power("off") #Be sure, that preamp is switched off
@@ -673,36 +566,29 @@ def main():
 
     set_source("Schneitzlberger")  #Set initial source to Schneitzlberger
     set_hyperion()
-    
+
     # Call thread to clear MCP interrupt from time to time (in case of error)
     t_stop = threading.Event()
     ci = Thread(target=clear_int, args=(1, t_stop))
     ci.start()
-    
-    vol_screen_t = Thread(target=set_vol_screen, args=(1, t_stop))
-    vol_screen_t.start()
-    
-    msg_screen_t = Thread(target=set_msg_screen, args=(1, t_stop))
-    msg_screen_t.start()
-    
-    clear_screen_t = Thread(target=clear_screen, args=(1, t_stop))
-    clear_screen_t.start()
-    
+
+
 
     tcpServer_t = Thread(target=tcpServer, args=(1, t_stop))
     tcpServer_t.start()
-    
+
+
 
 
     while True:
         try:
-            data, addr = e_udp_sock.recvfrom( 1024 )# Puffer-Groesse ist 1024 Bytes. 
+            data, addr = e_udp_sock.recvfrom( 1024 )# Puffer-Groesse ist 1024 Bytes.
             remote(data) # Abfrage der Fernbedienung (UDP-Server), der Rest passiert per Interrupt/Event
         except KeyboardInterrupt: # CTRL+C exit
             signal_term_handler(99, "") #Aufrufen des Signal-Handlers, in der Funktion wird das Programm sauber beendet
             break
 
 
-if __name__ == "__main__":                                                    
-    main()                                 
-	
+if __name__ == "__main__":
+    main()
+
