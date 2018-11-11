@@ -14,7 +14,8 @@ logging = True
 run_path =  os.path.dirname(os.path.abspath(__file__))
 
 class Hypctrl():
-    def __init__(self):
+    def __init__(self, oled=None):
+        self.oled = oled
         self.cList = ["Off", "Kodi", "BluRay", "Schrank", "FF8600", "red" , "green"]
         self.color = 0
         self.Out_ext1 = 16
@@ -66,6 +67,8 @@ class Hypctrl():
             msg = "Farbe: " + self.cList[self.color]
             GPIO.output(self.Out_ext1, GPIO.LOW)
         hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
+        if(self.oled is not None):
+            self.oled.setMsgScreen(l1="Es werde Licht:", l3=self.cList[self.color])
         #hyp = subprocess.Popen([cmd, *args])
         return()
 
@@ -73,7 +76,10 @@ class Hypctrl():
         return(self.cList[self.color])
 
 def main():
-    hyp = Hypctrl()
+
+    from oledctrl import AmpiOled
+    oled = AmpiOled()
+    hyp = Hypctrl(oled=oled)
     #hyp.setScene(color=3)
     for i in range(7):
         hyp.setScene()
