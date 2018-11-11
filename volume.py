@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env ptthon3
 
 import RPi.GPIO as GPIO
 from libby.logger import logger
@@ -13,7 +13,7 @@ class Volume():
         self.volPotVal = 40
         self.bus = bus
         self.oled = oled
-        #GPIO.setwarnings(False)
+        GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BOARD) # Nutzung der Pin-Nummerierung, nicht GPIO-Nummegn
         GPIO.setup(self.Out_i2c_iso, GPIO.OUT) # Enable/Disable Volume I2C-Bus-Isolator
         GPIO.output(self.Out_i2c_iso, GPIO.LOW) # Disable Volume I2C-Bus-Isolator
