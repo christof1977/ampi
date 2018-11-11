@@ -24,23 +24,20 @@ import json
 from libby.logger import logger
 from kodijson import Kodi
 from oledctrl import AmpiOled
-
+from volume import Volume
+from mcpctrl import Sources
 
 logging = True
 
 
 run_path =  os.path.dirname(os.path.abspath(__file__))
 
-mute = False # Als global zu benutzen
-volume = 35 # Als global zu benutzen
 reboot_count = 0
 
 #Listen der erlaubten Kommandos
 valid_sources = ['CD', 'Schneitzlberger', 'Portable', 'Hilfssherriff', 'Bladdnspiela', 'Himbeer314']
 valid_vol_cmd = ['up', 'down', 'mute']
 source = "Schneitzlberger"
-msg = "Schneitzlberger"
-#clear_display = 0
 
 
 # Liste der Hyperion-Farben
@@ -208,38 +205,27 @@ class Hardware():
         import RPi.GPIO as GPIO
         import smbus
         #import threading
-        self.mcp_device = 0x20 # Device Adresse (A0-A2)
-        self.mcp_iodira = 0x00 # Pin Register fuer die Richtung Port A
-        self.mcp_iodirb = 0x01 # Pin Register fuer die Richtung Port B
-        self.mcp_olatb = 0x15 # Register fuer Ausgabe (GPB)
-        self.mcp_gpioa = 0x12 # Register fuer Eingabe (GPA)
-        self.mcp_gpintena = 0x04 # Interrupt Enable Reigster (GPA)
-        self.mcp_defvala = 0x06 # Default Comparison Value for Interrupt (GPA)
-        self.mcp_intcona = 0x08 # Intertupt on change control register (GPA)
-        self.mcp_intcapa = 0x10 # Register INTCAPA
-
         self.bus = smbus.SMBus(1) # Rev 2 Pi
 
-        self.poti_device = 0x2f  #I2C-Adresse DS1882
 
         self.Out_ext1 = 16
         self.Out_ext2 = 18
         self.Out_pwr_rel = 29
-        self.Out_i2c_iso = 32
         self.In_mcp_int = 37
         self.In_vol_down = 7
         self.In_vol_up = 36
         self.In_mute = 15
-        self.minVol = 63  #63 für 63 Wiper Positionen, 33 für 33 Wiper Positionen
-        self.volPotVal = 40
 
         self.oled = oled
 
         self.initGpios()
 
-        self.t_stop = threading.Event()
+        self.volume = Volume(self.oled, self.bus)
+
+        #self.t_stop = threading.Event()
         # call thread to clear mcp interrupt from time to time (in case of error)
-        self.clearMcpInt()
+        self.sources = Sources(self.oled, self.bus)
+        #sources..clearMcpInt()
 
     def __del__(self):
         pass
@@ -252,16 +238,10 @@ class Hardware():
         GPIO.setup(self.Out_ext1, GPIO.OUT) # EXT1 -> for control of external Relais etc.
         GPIO.setup(self.Out_ext2, GPIO.OUT) # EXT2 -> for control of external Relais etc.
         GPIO.setup(self.Out_pwr_rel, GPIO.OUT) # PWR_REL -> for control of amp power supply (vol_ctrl, riaa_amp)
-        GPIO.setup(self.Out_i2c_iso, GPIO.OUT) # Enable/Disable Volume I2C-Bus-Isolator
         GPIO.output(self.Out_ext1, GPIO.LOW) # Switch amp power supply off
         GPIO.output(self.Out_pwr_rel, GPIO.LOW) # Switch amp power supply off
-        GPIO.output(self.Out_i2c_iso, GPIO.LOW) # Disable Volume I2C-Bus-Isolator
 
 
-        # Setze Port A Interrupt
-        self.bus.write_byte_data(self.mcp_device, self.mcp_gpintena, 0xFF)
-        self.bus.write_byte_data(self.mcp_device, self.mcp_defvala, 0x00)
-        self.bus.write_byte_data(self.mcp_device, self.mcp_intcona, 0x00)
 
         GPIO.setup(self.In_mcp_int, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Interrupt input from MCP (GPIO26)
         GPIO.setup(self.In_vol_down, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # vol_down key
@@ -273,16 +253,6 @@ class Hardware():
         GPIO.add_event_detect(self.In_mute, GPIO.RISING, callback = self.gpioInt, bouncetime = 250)  # Set Interrupt for mute key
         GPIO.add_event_detect(self.In_vol_up, GPIO.RISING, callback = self.gpioInt)  # Set Interrupt for vol_up key
 
-        # Initial clear of MCP-Interrupt
-        self.bus.read_byte_data(self.mcp_device, self.mcp_gpioa)
-        self.mcpOutputs = {"Schneitzlberger":0x00, "CD":0x28, "Portable":0x24,"Hilfssherriff":0x22,"Bladdnspiela":0x21,"Himbeer314":0x30}
-
-        # Definiere GPA als Input
-        # Binaer: 0 bedeutet Output, 1 bedeutet Input
-        self.bus.write_byte_data(self.mcp_device, self.mcp_iodira,0xFF)
-
-        # Definiere alle GPB Pins als Output
-        self.bus.write_byte_data(self.mcp_device, self.mcp_iodirb,0x00)
 
 
     def sethyperion(self):
@@ -291,7 +261,7 @@ class Hardware():
     def gpioInt(self, channel): #Interrupt Service Routine
         #This function is called, if an interrupt (GPIO) occurs; input parameter is the pin, where the interrupt occured; not needed here
         if channel == 37: #Interrupt from MCP
-            src = self.getMcpInt()
+            src = self.sources.getMcpInt()
             if src == "Nixtun":
                 return()
             elif src == "Error":
@@ -313,15 +283,15 @@ class Hardware():
         elif channel == 36: # Drehn am Rädle
             if GPIO.input(7): # Rechtsrum drehn
                 logger("Lauter", logging)
-                self.incVolumePot()
+                volume.incVolumePot()
             else: # Linksrum drehn
                 logger("Leiser", logging)
-                self.decVolumePot()
+                volume.decVolumePot()
             time.sleep(0.1)
             return()
         elif channel == 15: # mute key pressed
             logger("Ton aus", logging)
-            self.setVolumePot(self.minVol)
+            volume.setVolumePot(self.minVol)
             return()
         else:
             logger("An error orccured during GpioInt("+str(channel)+")", logging)
@@ -342,18 +312,18 @@ class Hardware():
             if(val == True):
                 amp_stat = GPIO.input(self.Out_pwr_rel) # nachschauen, ob der Preamp nicht evtl. schon läuft
                 if amp_stat == False:
-                    self.bus.write_byte_data(self.mcp_device, self.mcp_olatb, 0x00)  # source Schneitzlberger, damit Preamp von Endstufe getrennt wird
+                    self.sources.setMcpOut("Aus") # source Schneitzlberger, damit Preamp von Endstufe getrennt wird
                     GPIO.output(self.Out_pwr_rel, GPIO.HIGH) # Switch amp power supply on
                     logger("Ampi anmachen", logging)
                     time.sleep(1)
                     self.setPotWiper()
                     time.sleep(1)
-                    self.setVolumePot(self.volPotVal) #Aktuellen Lautstärke setzen
+                    volume.setVolumePot(self.volPotVal) #Aktuellen Lautstärke setzen
                 else:
                     #Der Preamp läuft wohl schon, also muss nur noch der Eingang gesetzt werden
                     logger("Ampi laaft scho!", logging)
             else:
-                self.bus.write_byte_data(self.mcp_device, self.mcp_olatb, 0x00)  # source Schneitzlberger, damit Preamp von Endstufe getrennt wird
+                self.sources.setMcpOut("Aus") # source Schneitzlberger, damit Preamp von Endstufe getrennt wird
                 GPIO.output(self.Out_pwr_rel, GPIO.LOW) # Switch amp power supply off
                 logger("Ampi ausmachen", logging)
         except Exception as e:
@@ -379,68 +349,6 @@ class Hardware():
             logger("Ampswitch else ... nothing happened.", logging)
         return()
 
-    def setPotWiper(self):
-    # Setzt das Poti auf 33 oder 63 Wiper-Stellungen, wie in self.minVol festgelegt
-        self.volIsolator(1) # Enable Volume I2C-Bus-Isolator
-        if self.minVol == 33:
-            self.bus.write_byte(self.poti_device, 0x87) #DS1882 auf 33 Wiper Positionen konfigurieren
-            logger("33 wiper", logging)
-        else:
-            self.bus.write_byte(self.poti_device,0x86) #DS1882 auf 63 Wiper Positionen konfigurieren
-            logger("63 wiper", logging)
-        self.volIsolator(0) # Disable Volume I2C-Bus-Isolator
-
-
-
-    def volIsolator(self, status):
-        # Mit dieser Funktion wird der DS1882 auf den I2C-Bus geschaltet (1) oder vom Bus getrennt (0)
-        if status == 1:
-            GPIO.output(self.Out_i2c_iso, GPIO.HIGH) #DS1882 auf den Bus schalten
-        else:
-            GPIO.output(self.Out_i2c_iso, GPIO.LOW) #DS1182 vom Bus trennen
-        return()
-
-    def setVolumePot(self, value):
-        if(value >= self.minVol):
-            return(-1)
-        elif(self.volPotVal <= 0):
-            return(-1)
-        self.volIsolator(1) # Enable Volume I2C-Bus-Isolator
-        try:
-            self.volPotVal = value
-            self.bus.write_byte(self.poti_device,self.volPotVal)
-            self.bus.write_byte(self.poti_device,self.volPotVal+64)
-            self.oled.setVolScreen(self.volPotVal)
-            logger("Mach mal die Lautstärke auf -"+ str(self.volPotVal) +"dB")
-            ret = 0
-        except:
-            logger("Kann ich etz so net machn. Is der Ampi aus?", logging)
-            self.oled.setVolScreen(99)
-            ret = -1
-        self.volIsolator(0) # Disable Volume I2C-Bus-Isolator
-        return(ret)
-
-    def incVolumePot(self):
-        if(self.volPotVal > 0):
-            self.volPotVal -= 1
-            self.setVolumePot(self.volPotVal)
-            return(0)
-        else:
-            return(-1)
-
-    def decVolumePot(self):
-        if(self.volPotVal < self.minVol):
-            self.volPotVal += 1
-            self.setVolumePot(self.volPotVal)
-            return(0)
-        else:
-            return(-1)
-
-
-
-    def getVolumePot(self):
-        return(self.volPotVal)
-
 
     def setSource(self, src):
         if src == "00000000":
@@ -449,41 +357,41 @@ class Hardware():
             self.tvPwr(True)
             self.ampPwr(True)
             self.ampiPwr(False)
-            self.setMcpOut(src)
+            self.sources.setMcpOut(src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "CD":
             self.tvPwr(False)
             self.ampPwr(True)
             self.ampiPwr(True)
-            self.setMcpOut(src)
+            self.sources.setMcpOut(src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Portable":
             self.tvPwr(False)
             self.ampPwr(True)
             self.ampiPwr(True)
-            self.setMcpOut(src)
+            self.sources.setMcpOut(src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Hilfssherriff":
             self.tvPwr(False)
             self.ampPwr(True)
             self.ampiPwr(True)
-            self.setMcpOut(src)
+            self.sources.setMcpOut(src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Bladdnspiela":
             self.tvPwr(False)
             self.ampPwr(True)
             self.ampiPwr(True)
-            self.setMcpOut(src)
+            self.sources.setMcpOut(src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Himbeer314":
             self.tvPwr(False)
             self.ampPwr(True)
             self.ampiPwr(True)
-            self.setMcpOut(src)
+            self.sources.setMcpOut(src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Aus":
             self.oled.setMsgScreen(l1="Eingang", l3="Alles aus etz!")
-            self.setMcpOut("Schneitzlberger")
+            self.sources.setMcpOut("Schneitzlberger")
             self.tvPwr(False)
             self.ampPwr(False)
             self.ampiPwr(False)
@@ -491,72 +399,6 @@ class Hardware():
         else:
             logger('Komischer Elisenzustand', logging)
         return()
-
-    def setMcpOut(self, val):
-        self.bus.write_byte_data(self.mcp_device, self.mcp_olatb, self.mcpOutputs[val])
-        logger("Setz den MCP auf: "+str(self.mcpOutputs[val]))
-        pass
-
-    def getMcpOut(self):
-        olatte = self.bus.read_byte_data(self.mcp_device, self.mcp_olatb)
-
-
-    def getMcpInt(self):
-        #Diese Funktion wird aufgerufen, wenn ein Interrupt vom MCP eintrudelt. Als erstes
-        #wird das intcap-Register ausgelesen, um festzustellen, welcher Taster gedrückt wurde:
-        intcap = self.bus.read_byte_data(self.mcp_device,self.mcp_intcapa)  # Read Intcap-Register from MCP23017
-        #Damit wird der Interrupt im MCP auch gelöscht.
-        if intcap == 0x00:
-           #Dieser Interrupt-Wert kommt vor, wenn ein Taster wieder losgelassen wird. Hier wird einfach nix getan
-           ret = "Nixtun"
-        elif intcap == 0x08:
-           ret = "Schneitzlberger"
-        elif intcap == 0x40:
-           ret = "CD"
-        elif intcap == 0x80:
-           ret = "Portable"
-        elif intcap == 0x04:
-           ret = "Hilfssherriff"
-        elif intcap == 0x01:
-           ret = "Bladdnspiela"
-        elif intcap == 0x02:
-           ret = "Himbeer314"
-        elif intcap == 0x20:
-           ret = "Hyperion"
-        elif intcap == 0x10:
-           ret = "DimOled"
-        else:
-           ret = "Error"
-        return(ret)
-
-
-
-
-    def clearMcpInt(self):
-        ciT = threading.Thread(target=self._clearMcpInt)
-        ciT.setDaemon(True)
-        ciT.start()
-
-
-    def _clearMcpInt(self):
-        # The function clear_int() should be called regularly to make sure,
-        # that the MCP device interrupt remains not set accidently
-        # In the meantime, some more things are done in this function.
-        # It is called as a thread, the while loop runs every three seconds.
-        global reboot_count
-        while(not self.t_stop.is_set()):
-            # Clear interrupts of MCP
-            intcap = self.bus.read_byte_data(self.mcp_device, self.mcp_intcapa)  # Read Intcap-Register from MCP23017
-            gpioa = self.bus.read_byte_data(self.mcp_device, self.mcp_gpioa)  # Read Intcap-Register from MCP23017
-            self.bus.write_byte_data(self.mcp_device, self.mcp_gpintena,0x00)
-            self.bus.write_byte_data(self.mcp_device, self.mcp_gpintena,0xFF)
-            intcap = 0
-            # Interrupt of MCP cleared
-            reboot_count = 0 # Clear reboot counter
-            self.t_stop.wait(3)
-            pass
-
-
 
 
 
