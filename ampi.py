@@ -19,18 +19,17 @@ import fcntl
 import struct
 import math
 import select
-import subprocess
 import json
 from libby.logger import logger
 from kodijson import Kodi
 from oledctrl import AmpiOled
 from volume import Volume
 from mcpctrl import Sources
+from hypctrl import Hypctrl
 
 logging = True
 
 
-run_path =  os.path.dirname(os.path.abspath(__file__))
 
 reboot_count = 0
 
@@ -41,8 +40,7 @@ source = "Schneitzlberger"
 
 
 # Liste der Hyperion-Farben
-hyperion_color_list = ["Off", "Kodi", "BluRay", "Schrank", "FF8600", "red" , "green"]
-hyperion_color = 1 # Als global zu benutzen
+#hyperion_color = 1 # Als global zu benutzen
 
 
 
@@ -147,60 +145,12 @@ def remote(data):
 
 
 
-def set_hyperion():
-    global hyperion_color
-    global msg
-    if hyperion_color == 0:
-        args = ['-c', 'black']
-        msg = "Off"
-        GPIO.output(Out_ext1, GPIO.LOW)
-        logger("   Off", logging)
-        hyperion_color += 1
-    elif hyperion_color == 1:
-        args = ['-x']
-        msg = "Kodi"
-        GPIO.output(Out_ext1, GPIO.LOW)
-        logger("   Kodi", logging)
-        hyperion_color +=1
-    elif hyperion_color == 2:
-        args = ['-x']
-        v4l_ret = subprocess.Popen([run_path+'/hyp-v4l.sh', '&'])
-        msg = "BluRay"
-        logger("    BluRay", logging)
-        GPIO.output(Out_ext1, GPIO.LOW)
-        hyperion_color += 1
-    elif hyperion_color == 3:
-        v4l_ret = subprocess.call(['/usr/bin/killall',  'hyperion-v4l2'])
-        args = ['-c',  hyperion_color_list[hyperion_color+1]]
-        msg = "Farbe: "+hyperion_color_list[hyperion_color+1]+" und Schrank"
-        logger("   " + hyperion_color_list[hyperion_color+1]+" und Schrank", logging)
-        GPIO.output(Out_ext1, GPIO.HIGH)
-        hyperion_color += 1
-    elif hyperion_color > 3:
-        args = ['-c',  hyperion_color_list[hyperion_color]]
-        msg = "Farbe: "+hyperion_color_list[hyperion_color]
-        logger("   " + hyperion_color_list[hyperion_color], logging)
-        GPIO.output(Out_ext1, GPIO.LOW)
-        if hyperion_color == len(hyperion_color_list)-1:
-           hyperion_color = 0
-        else:
-           hyperion_color += 1
-    else:
-        hyperion_color = 0
-        return()
-    cmd = ['/usr/bin/hyperion-remote']
-    cmd = cmd+args
-    hyp = subprocess.call(cmd)
-    return()
-
-
-
 
 
 
 
 class Hardware():
-    def __init__(self, oled):
+    def __init__(self, oled, hyp):
         logger("init class hardware",logging)
         import RPi.GPIO as GPIO
         import smbus
@@ -208,7 +158,6 @@ class Hardware():
         self.bus = smbus.SMBus(1) # Rev 2 Pi
 
 
-        self.Out_ext1 = 16
         self.Out_ext2 = 18
         self.Out_pwr_rel = 29
         self.In_mcp_int = 37
@@ -217,6 +166,7 @@ class Hardware():
         self.In_mute = 15
 
         self.oled = oled
+        self.hyp = hyp
 
         self.initGpios()
 
@@ -235,10 +185,8 @@ class Hardware():
         logger("init GPIOs", logging)
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BOARD) # Nutzung der Pin-Nummerierung, nicht GPIO-Nummegn
-        GPIO.setup(self.Out_ext1, GPIO.OUT) # EXT1 -> for control of external Relais etc.
         GPIO.setup(self.Out_ext2, GPIO.OUT) # EXT2 -> for control of external Relais etc.
         GPIO.setup(self.Out_pwr_rel, GPIO.OUT) # PWR_REL -> for control of amp power supply (vol_ctrl, riaa_amp)
-        GPIO.output(self.Out_ext1, GPIO.LOW) # Switch amp power supply off
         GPIO.output(self.Out_pwr_rel, GPIO.LOW) # Switch amp power supply off
 
 
@@ -255,8 +203,6 @@ class Hardware():
 
 
 
-    def sethyperion(self):
-        pass
 
     def gpioInt(self, channel): #Interrupt Service Routine
         #This function is called, if an interrupt (GPIO) occurs; input parameter is the pin, where the interrupt occured; not needed here
@@ -278,7 +224,7 @@ class Hardware():
                 return()
             elif src == "Hyperion":
                 logger("Switching hyperion to ", logging)
-                set_hyperion()
+                self.hyp.setScene()
                 return()
         elif channel == 36: # Drehn am Rädle
             if GPIO.input(7): # Rechtsrum drehn
@@ -455,6 +401,7 @@ def main():
     global t_stop
 
     oled = AmpiOled()
+    hyp = Hypctrl(oled)
 
     logger("Starting amplifier control service", logging)
 
@@ -464,7 +411,7 @@ def main():
 
 
     #Init of GPIOs and MCP port expander
-    hw = Hardware(oled)
+    hw = Hardware(oled, hyp)
 
 
     #amp_status = True
