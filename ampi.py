@@ -23,7 +23,7 @@ import subprocess
 import json
 from libby.logger import logger
 from kodijson import Kodi
-from ampiOled import AmpiOled
+from oledctrl import AmpiOled
 
 
 logging = True
