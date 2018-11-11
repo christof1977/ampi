@@ -214,8 +214,7 @@ class Hardware():
                 logger("An error occured", logging)
                 return()
             elif src == "DimOled":
-                global clear_display
-                clear_display = not clear_display
+                self.oled.toggleBlankScreen()
                 logger("Dim switch toggled", logging)
                 return()
             elif src in valid_sources:
@@ -398,7 +397,7 @@ def set_volume(cmd):
 
 def main():
     #global e_udp_sock
-    global t_stop
+    #global t_stop
 
     oled = AmpiOled()
     hyp = Hypctrl(oled)
@@ -409,18 +408,11 @@ def main():
     #Handler wird aufgerufen, wenn das Programm beendet wird, z.B. durch systemctl
     signal.signal(signal.SIGTERM, signal_term_handler)
 
-
-    #Init of GPIOs and MCP port expander
     hw = Hardware(oled, hyp)
 
-
-    #amp_status = True
-    #hw.amp_power("off") #Be sure, that preamp is switched off
     time.sleep(1.1) #Short break to make sure the display is cleaned
 
-    #hw.setSource("Schneitzlberger")  #Set initial source to Schneitzlberger
-    hw.setSource("Aus")  #Set initial source to Schneitzlberger
-    #set_hyperion()
+    hw.setSource("Aus")  #Set initial source to Aus
 
 
 
@@ -429,6 +421,7 @@ def main():
 
 
 
+    logger("Amplifier control service running", logging)
 
     while True:
         try:
@@ -437,7 +430,6 @@ def main():
         except KeyboardInterrupt: # CTRL+C exit
             signal_term_handler(99, "") #Aufrufen des Signal-Handlers, in der Funktion wird das Programm sauber beendet
             break
-
 
 if __name__ == "__main__":
     main()
