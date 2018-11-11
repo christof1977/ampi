@@ -48,31 +48,6 @@ eth_addr='osmd.fritz.box'
 udp_port=5005 #An diesen Port wird der UDP-Server gebunden
 tcp_port=5015
 
-logger("Starting UDP-Server at " + eth_addr + ":" + str(udp_port),logging)
-e_udp_sock = socket.socket( socket.AF_INET,  socket.SOCK_DGRAM )
-e_udp_sock.bind( (eth_addr,udp_port) )
-
-def signal_term_handler(signal, frame):
-    global e_udp_sock
-    global t_stop
-    global lcd
-    global conn
-    logger("Got " + str(signal), logging)
-    logger("Closing UDP Socket", logging)
-    e_udp_sock.close() #UDP-Server abschiessen
-    amp_power("off") #Preamp schlafen legen
-
-    t_stop.set() #Threads ordnungsgemäss beenden
-
-    GPIO.cleanup()   #GPIOs aufräumen
-    so = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    so.connect((eth_addr, tcp_port))
-    so.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    so.send("foo".encode())
-    so.close()
-    logger("              So long sucker!", logging) #Fein auf Wiedersehen sagen
-    sys.exit(0) #Und raus hier
-
 
 
 
@@ -349,10 +324,53 @@ class Hardware():
 
 class Ampi():
     def __init__(self):
-        pass
+
+        logger("Starting amplifier control service", logging)
+
+        self.oled = AmpiOled()
+        self.hyp = Hypctrl(self.oled)
+        #Starte handler für SIGTERM (kill -15), also normales beenden
+        #Handler wird aufgerufen, wenn das Programm beendet wird, z.B. durch systemctl
+        signal.signal(signal.SIGTERM, self.signal_term_handler)
+
+        self.hw = Hardware(self.oled, self.hyp)
+
+        time.sleep(1.1) #Short break to make sure the display is cleaned
+
+        self.hw.setSource("Aus")  #Set initial source to Aus
+
+        logger("Starting UDP-Server at " + eth_addr + ":" + str(udp_port),logging)
+        self.e_udp_sock = socket.socket( socket.AF_INET,  socket.SOCK_DGRAM )
+        self.e_udp_sock.bind( (eth_addr,udp_port) )
+
+
+
+        #tcpServer_t = Thread(target=tcpServer, args=(1, t_stop))
+        #tcpServer_t.start()
+
+
+
+        logger("Amplifier control service running", logging)
+
 
     def __del__(self):
         pass
+
+    def signal_term_handler(self, signal, frame):
+        logger("Got " + str(signal), logging)
+        logger("Closing UDP Socket", logging)
+        self.e_udp_sock.close() #UDP-Server abschiessen
+        self.hw.setSource("off") #Preamp schlafen legen
+
+        GPIO.cleanup()   #GPIOs aufräumen
+        #so = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #so.connect((eth_addr, tcp_port))
+        #so.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        #so.send("foo".encode())
+        #so.close()
+        logger("              So long sucker!", logging) #Fein auf Wiedersehen sagen
+        sys.exit(0) #Und raus hier
+
 
     def setVolume(self):
         pass
@@ -396,40 +414,17 @@ def set_volume(cmd):
 
 
 def main():
-    #global e_udp_sock
-    #global t_stop
-
-    oled = AmpiOled()
-    hyp = Hypctrl(oled)
-
-    logger("Starting amplifier control service", logging)
-
-    #Starte handler für SIGTERM (kill -15), also normales beenden
-    #Handler wird aufgerufen, wenn das Programm beendet wird, z.B. durch systemctl
-    signal.signal(signal.SIGTERM, signal_term_handler)
-
-    hw = Hardware(oled, hyp)
-
-    time.sleep(1.1) #Short break to make sure the display is cleaned
-
-    hw.setSource("Aus")  #Set initial source to Aus
-
-
-
-    #tcpServer_t = Thread(target=tcpServer, args=(1, t_stop))
-    #tcpServer_t.start()
-
-
-
-    logger("Amplifier control service running", logging)
-
+    ampi = Ampi()
     while True:
         try:
-            data, addr = e_udp_sock.recvfrom( 1024 )# Puffer-Groesse ist 1024 Bytes.
+            data, addr = ampi.e_udp_sock.recvfrom( 1024 )# Puffer-Groesse ist 1024 Bytes.
             remote(data) # Abfrage der Fernbedienung (UDP-Server), der Rest passiert per Interrupt/Event
         except KeyboardInterrupt: # CTRL+C exit
-            signal_term_handler(99, "") #Aufrufen des Signal-Handlers, in der Funktion wird das Programm sauber beendet
+            ampi.signal_term_handler(99, "") #Aufrufen des Signal-Handlers, in der Funktion wird das Programm sauber beendet
             break
+
+
+
 
 if __name__ == "__main__":
     main()
