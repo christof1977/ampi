@@ -51,7 +51,7 @@ class Volume():
             self.bus.write_byte(self.poti_device,self.volPotVal+64)
             if(display):
                 self.oled.setVolScreen(self.volPotVal)
-            logger("Mach mal die Lautstärke auf -"+ str(self.volPotVal) +"dB")
+            logger("Mach mal auf -"+ str(self.volPotVal) +"dB")
             ret = 0
         except:
             logger("Kann ich etz so net machn. Is der Ampi aus?", logging)

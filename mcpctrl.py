@@ -7,7 +7,7 @@ logging = True
 
 class Sources():
     def __init__(self, oled, bus):
-        logger("Sourcenklasse läuft an", logging)
+        logger("Sourcenklasse laaft an", logging)
         self.oled = oled
         self.bus = bus
 
