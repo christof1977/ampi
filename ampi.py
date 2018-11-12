@@ -34,8 +34,6 @@ logging = True
 reboot_count = 0
 
 #Listen der erlaubten Kommandos
-valid_sources = ['CD', 'Schneitzlberger', 'Portable', 'Hilfssherriff', 'Bladdnspiela', 'Himbeer314']
-valid_vol_cmd = ['up', 'down', 'mute']
 source = "Schneitzlberger"
 
 
@@ -51,71 +49,7 @@ tcp_port=5015
 
 
 
-def stop_kodi():
-    try:
-        kodi = Kodi("http://"+eth_addr+"/jsonrpc")
-        playerid = kodi.Player.GetActivePlayers()["result"][0]["playerid"]
-        result = kodi.Player.Stop({"playerid": playerid})
-        logger("Kodi aus!", logging)
-    except Exception as e:
-        logger("Beim Kodi stoppen is wos passiert: " + str(e), logging)
 
-
-
-def remote(data):
-    data = data.decode()
-    try:
-        jcmd = json.loads(data)
-        print(jcmd)
-    except:
-        logger("Das ist mal kein JSON, pff!", logging)
-        valid = "nee"
-        return(valid)
-    global source
-    if(jcmd['Aktion'] == "Input"):
-        logger("Input: " + jcmd['Parameter'], logging)
-        if jcmd['Parameter'] in valid_sources:
-            logger("Source set remotely to " + data, logging)
-            amp_power(jcmd['Parameter'])
-            source = jcmd['Parameter']
-            valid = "ja"
-    elif(jcmd['Aktion'] == "hyperion"):
-        logger("Remote hyperion control", logging)
-        set_hyperion()
-        valid = "ja"
-    elif(jcmd['Aktion'] == "Volume"):
-        if jcmd['Parameter'] in valid_vol_cmd:
-            set_volume(jcmd['Parameter'])
-            valid = "ja"
-    elif data[:7] == "set_vol": # Ich habe keine Ahnung, was es mit dem Zweig auf sich hat!
-        #logger("Set_vol to " + data[9:], logging)
-        set_volume(data)
-        valid = "ja"
-    elif(jcmd['Aktion'] == "Switch"):
-        if jcmd['Parameter'] == "dim_sw":
-            global clear_display
-            clear_display = not clear_display
-            logger("Dim remote command toggled", logging)
-            #source = "Schneitzlberger"
-            valid = "ja"
-        elif jcmd['Parameter'] == "power":
-            amp_power("off")
-            global hyperion_color
-            hyperion_color = 1
-            set_hyperion()
-            stop_kodi()
-            logger("Aus is fuer heit!", logging)
-            valid = "ja"
-        else:
-            logger("Des bassd net.", logging)
-            valid = "nee"
-    elif data == "zustand":
-        valid = "zustand"
-    else:
-        logger(data, logging)
-        logger("Invalid remote command!", logging)
-        valid = "nee"
-    return(valid)
 
 
 
@@ -139,6 +73,7 @@ class Hardware():
         self.In_vol_down = 7
         self.In_vol_up = 36
         self.In_mute = 15
+        self.validSources = ['Aus', 'CD', 'Schneitzlberger', 'Portable', 'Hilfssherriff', 'Bladdnspiela', 'Himbeer314']
 
         self.oled = oled
         self.hyp = hyp
@@ -192,7 +127,7 @@ class Hardware():
                 self.oled.toggleBlankScreen()
                 logger("Dim switch toggled", logging)
                 return()
-            elif src in valid_sources:
+            elif src in self.validSources:
                 logger("Switching input to " + src, logging)
                 self.setSource(src)
                 return()
@@ -203,15 +138,15 @@ class Hardware():
         elif channel == 36: # Drehn am Rädle
             if GPIO.input(7): # Rechtsrum drehn
                 logger("Lauter", logging)
-                volume.incVolumePot()
+                self.volume.incVolumePot()
             else: # Linksrum drehn
                 logger("Leiser", logging)
-                volume.decVolumePot()
+                self.volume.decVolumePot()
             time.sleep(0.1)
             return()
         elif channel == 15: # mute key pressed
             logger("Ton aus", logging)
-            volume.setVolumePot(self.minVol)
+            mute = self.volume.toggleMute()
             return()
         else:
             logger("An error orccured during GpioInt("+str(channel)+")", logging)
@@ -236,9 +171,10 @@ class Hardware():
                     GPIO.output(self.Out_pwr_rel, GPIO.HIGH) # Switch amp power supply on
                     logger("Ampi anmachen", logging)
                     time.sleep(1)
-                    self.setPotWiper()
+                    self.volume.setPotWiper()
                     time.sleep(1)
-                    volume.setVolumePot(self.volPotVal) #Aktuellen Lautstärke setzen
+                    vol = self.volume.getVolumePot()
+                    self.volume.setVolumePot(vol, display=False) #Aktuellen Lautstärke setzen
                 else:
                     #Der Preamp läuft wohl schon, also muss nur noch der Eingang gesetzt werden
                     logger("Ampi laaft scho!", logging)
@@ -269,53 +205,84 @@ class Hardware():
             logger("Ampswitch else ... nothing happened.", logging)
         return()
 
+    def setKodiAudio(self, val):
+        if(val == "analog"):
+            device = "ALSA:@"
+        else:
+            device = "PI:HDMI"
+        try:
+            kodi = Kodi("http://"+eth_addr+"/jsonrpc")
+            kodi.Settings.SetSettingValue({"setting":"audiooutput.audiodevice","value":device})
+            kodi.GUI.ShowNotification({"title":"Tonausgang is etz:", "message":val})
+            logger("Kodi laaft etz auf " + device, logging)
+        except Exception as e:
+            logger("Beim Kodiausgang umschalten is wos passiert: " + str(e), logging)
+
+    def setKodiNotification(self, title, msg):
+        try:
+            kodi = Kodi("http://"+eth_addr+"/jsonrpc")
+            kodi.GUI.ShowNotification({"title":title, "message":msg})
+        except Exception as e:
+            logger("Beim der Kodianzeigerei is wos passiert: " + str(e), logging)
+
+
 
     def setSource(self, src):
         if src == "00000000":
             return()
         elif src == "Schneitzlberger":
+            self.setKodiAudio("digital")
             self.tvPwr(True)
             self.ampPwr(True)
             self.ampiPwr(False)
             self.sources.setMcpOut(src)
+            self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "CD":
             self.tvPwr(False)
             self.ampPwr(True)
             self.ampiPwr(True)
             self.sources.setMcpOut(src)
+            self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Portable":
             self.tvPwr(False)
             self.ampPwr(True)
             self.ampiPwr(True)
             self.sources.setMcpOut(src)
+            self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Hilfssherriff":
             self.tvPwr(False)
             self.ampPwr(True)
             self.ampiPwr(True)
             self.sources.setMcpOut(src)
+            self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Bladdnspiela":
             self.tvPwr(False)
             self.ampPwr(True)
             self.ampiPwr(True)
             self.sources.setMcpOut(src)
+            self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Himbeer314":
+            self.setKodiAudio("analog")
             self.tvPwr(False)
             self.ampPwr(True)
             self.ampiPwr(True)
             self.sources.setMcpOut(src)
+            self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Aus":
+            self.setKodiAudio("digital")
             self.oled.setMsgScreen(l1="Eingang", l3="Alles aus etz!")
+            self.setKodiNotification("Ampi-Eingang", src)
             self.sources.setMcpOut("Schneitzlberger")
             self.tvPwr(False)
             self.ampPwr(False)
             self.ampiPwr(False)
-            #Todo: hyperion auschalten
+            self.hyp.setScene("Kodi")
         else:
             logger('Komischer Elisenzustand', logging)
         return()
@@ -327,6 +294,7 @@ class Ampi():
 
         logger("Starting amplifier control service", logging)
 
+        self.validVolCmd = ['Up', 'Down', 'Mute']
         self.oled = AmpiOled()
         self.hyp = Hypctrl(self.oled)
         #Starte handler für SIGTERM (kill -15), also normales beenden
@@ -339,11 +307,7 @@ class Ampi():
 
         self.hw.setSource("Aus")  #Set initial source to Aus
 
-        logger("Starting UDP-Server at " + eth_addr + ":" + str(udp_port),logging)
-        self.e_udp_sock = socket.socket( socket.AF_INET,  socket.SOCK_DGRAM )
-        self.e_udp_sock.bind( (eth_addr,udp_port) )
-
-
+        self.udpServer()
 
         #tcpServer_t = Thread(target=tcpServer, args=(1, t_stop))
         #tcpServer_t.start()
@@ -359,8 +323,8 @@ class Ampi():
     def signal_term_handler(self, signal, frame):
         logger("Got " + str(signal), logging)
         logger("Closing UDP Socket", logging)
-        self.e_udp_sock.close() #UDP-Server abschiessen
-        self.hw.setSource("off") #Preamp schlafen legen
+        self.udpSock.close() #UDP-Server abschiessen
+        self.hw.setSource("Aus") #Preamp schlafen legen
 
         GPIO.cleanup()   #GPIOs aufräumen
         #so = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -372,44 +336,92 @@ class Ampi():
         sys.exit(0) #Und raus hier
 
 
-    def setVolume(self):
+    def udpServer(self):
+        logger("Starting UDP-Server at " + eth_addr + ":" + str(udp_port),logging)
+        self.udpSock = socket.socket( socket.AF_INET,  socket.SOCK_DGRAM )
+        self.udpSock.bind( (eth_addr,udp_port) )
+
+        self.t_stop = threading.Event()
+        udpT = threading.Thread(target=self._udpServer)
+        udpT.setDaemon(True)
+        udpT.start()
+
+    def _udpServer(self):
+        while(not self.t_stop.is_set()):
+            data, addr = self.udpSock.recvfrom( 1024 )# Puffer-Groesse ist 1024 Bytes.
+            self.parseCmd(data) # Abfrage der Fernbedienung (UDP-Server), der Rest passiert per Interrupt/Event
+
+    def stopKodiPlayer(self):
+        try:
+            kodi = Kodi("http://"+eth_addr+"/jsonrpc")
+            playerid = kodi.Player.GetActivePlayers()["result"][0]["playerid"]
+            result = kodi.Player.Stop({"playerid": playerid})
+            logger("Kodi aus!", logging)
+        except Exception as e:
+            logger("Beim Kodi stoppen is wos passiert: " + str(e), logging)
+
+
+    def parseCmd(self, data):
+        data = data.decode()
+        try:
+            jcmd = json.loads(data)
+        except:
+            logger("Das ist mal kein JSON, pff!", logging)
+            valid = "nee"
+            return(valid)
+        if(jcmd['Aktion'] == "Input"):
+            logger("Input: " + jcmd['Parameter'], logging)
+            #if jcmd['Parameter'] in self.validSources:
+            logger("Source set remotely to " + data, logging)
+            self.hw.setSource(jcmd['Parameter'])
+            #source = jcmd['Parameter']
+            valid = "ja"
+        elif(jcmd['Aktion'] == "Hyperion"):
+            logger("Remote hyperion control", logging)
+            self.hyp.setScene()
+            valid = "ja"
+        elif(jcmd['Aktion'] == "Volume"):
+            if jcmd['Parameter'] in self.validVolCmd:
+                self.setVolume(jcmd['Parameter'])
+                valid = "ja"
+            else:
+                valid = "nee"
+        elif(jcmd['Aktion'] == "Switch"):
+            if jcmd['Parameter'] == "DimOled":
+                self.hw.oled.toggleBlankScreen()
+                logger("Dim remote command toggled", logging)
+                valid = "ja"
+            elif jcmd['Parameter'] == "Power":
+                self.hw.setSource("Aus")
+                hyperion_color = 1
+                self.hyp.setScene("Kodi")
+                self.stopKodiPlayer()
+                logger("Aus is fuer heit!", logging)
+                valid = "ja"
+            else:
+                logger("Des bassd net.", logging)
+                valid = "nee"
+        elif data == "zustand":
+            valid = "zustand"
+        else:
+            logger(data, logging)
+            logger("Invalid remote command!", logging)
+            valid = "nee"
+        return(valid)
+
+
+
+    def setVolume(self, val):
+        if(val == "Up"):
+            self.hw.volume.incVolumePot()
+        elif(val == "Down"):
+            self.hw.volume.decVolumePot()
+        else:
+            self.hw.volume.toggleMute()
         pass
 
     def setInput(self):
         pass
-
-def set_volume(cmd):
-    global mute
-    global volume
-    global oled
-    if cmd == "mute":
-        mute = not mute
-        if mute == True:
-            pot_value = min_vol
-        else:
-            pot_value = volume
-    elif cmd == "up":
-        mute = False
-        if volume > 0:
-            volume -= 1
-        pot_value = volume
-    elif cmd == "down":
-        mute = False
-        if volume < min_vol:
-            volume +=1
-        pot_value = volume
-    elif cmd[:7] == "set_vol":
-        mute = False
-        try:
-            pot_value = abs(int(cmd[8:]))
-            volume = pot_value
-        except:
-            pot_value = volume
-    else:
-        pot_value = volume
-    logger("Setting Volume: -" + str(pot_value) + "dB", logging)
-    #hw.setVolumePot(pot_value)
-    return()
 
 
 
@@ -417,8 +429,8 @@ def main():
     ampi = Ampi()
     while True:
         try:
-            data, addr = ampi.e_udp_sock.recvfrom( 1024 )# Puffer-Groesse ist 1024 Bytes.
-            remote(data) # Abfrage der Fernbedienung (UDP-Server), der Rest passiert per Interrupt/Event
+            time.sleep(1)
+            pass
         except KeyboardInterrupt: # CTRL+C exit
             ampi.signal_term_handler(99, "") #Aufrufen des Signal-Handlers, in der Funktion wird das Programm sauber beendet
             break

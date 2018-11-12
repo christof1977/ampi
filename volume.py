@@ -1,4 +1,4 @@
-#!/usr/bin/env ptthon3
+#!/usr/bin/env python3
 
 import RPi.GPIO as GPIO
 from libby.logger import logger
@@ -13,7 +13,7 @@ class Volume():
         self.volPotVal = 40
         self.bus = bus
         self.oled = oled
-        GPIO.setwarnings(False)
+        #GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BOARD) # Nutzung der Pin-Nummerierung, nicht GPIO-Nummegn
         GPIO.setup(self.Out_i2c_iso, GPIO.OUT) # Enable/Disable Volume I2C-Bus-Isolator
         GPIO.output(self.Out_i2c_iso, GPIO.LOW) # Disable Volume I2C-Bus-Isolator
@@ -39,8 +39,8 @@ class Volume():
             GPIO.output(self.Out_i2c_iso, GPIO.LOW) #DS1182 vom Bus trennen
         return()
 
-    def setVolumePot(self, value):
-        if(value >= self.minVol):
+    def setVolumePot(self, value, display=True):
+        if(value > self.minVol):
             return(-1)
         elif(self.volPotVal <= 0):
             return(-1)
@@ -49,7 +49,8 @@ class Volume():
             self.volPotVal = value
             self.bus.write_byte(self.poti_device,self.volPotVal)
             self.bus.write_byte(self.poti_device,self.volPotVal+64)
-            self.oled.setVolScreen(self.volPotVal)
+            if(display):
+                self.oled.setVolScreen(self.volPotVal)
             logger("Mach mal die Lautstärke auf -"+ str(self.volPotVal) +"dB")
             ret = 0
         except:
@@ -75,7 +76,18 @@ class Volume():
         else:
             return(-1)
 
-
+    def toggleMute(self):
+        if(self.volPotVal != self.minVol):
+            self.volBeforeMute = self.volPotVal
+            self.volPotVal = self.minVol
+            self.mute = True
+            logger("Stumm", logging)
+        else:
+            self.volPotVal = self.volBeforeMute
+            self.mute = False
+            logger("Nicht mehr stumm", logging)
+        self.setVolumePot(self.volPotVal)
+        return(self.mute)
 
     def getVolumePot(self):
         return(self.volPotVal)

@@ -6,12 +6,14 @@ import subprocess
 from subprocess import DEVNULL
 from libby.logger import logger
 
+from kodijson import Kodi
 import RPi.GPIO as GPIO
 
 
 logging = True
 
 run_path =  os.path.dirname(os.path.abspath(__file__))
+eth_addr = 'osmd.fritz.box'
 
 class Hypctrl():
     def __init__(self, oled=None):
@@ -24,10 +26,23 @@ class Hypctrl():
         GPIO.setup(self.Out_ext1, GPIO.OUT) # EXT1 -> for control of external Relais etc.
         GPIO.output(self.Out_ext1, GPIO.LOW) # Switch amp power supply off
 
+    def setKodiNotification(self, title, msg):
+        try:
+            kodi = Kodi("http://"+eth_addr+"/jsonrpc")
+            kodi.GUI.ShowNotification({"title":title, "message":msg})
+        except Exception as e:
+            logger("Beim der Kodianzeigerei is wos passiert: " + str(e), logging)
 
-    def setScene(self, color=None):
-        if(color is not None):
-            self.color=int(color)
+
+
+    def setScene(self, col=None):
+        if(col is not None):
+            if(type(col) is int):
+                self.color=int(col)
+            else:
+                colInd = self.cList.index(col)
+                print(self.cList[colInd])
+                self.color = colInd
         else:
             if(self.color == len(self.cList)-1):
                 self.color = 0
@@ -69,6 +84,7 @@ class Hypctrl():
         hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
         if(self.oled is not None):
             self.oled.setMsgScreen(l1="Es werde Licht:", l3=self.cList[self.color])
+        self.setKodiNotification("Es werde Licht", self.cList[self.color])
         #hyp = subprocess.Popen([cmd, *args])
         return()
 

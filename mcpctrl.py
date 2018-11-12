@@ -39,8 +39,7 @@ class Sources():
 
     def setMcpOut(self, val):
         self.bus.write_byte_data(self.mcp_device, self.mcp_olatb, self.mcpOutputs[val])
-        logger("Setz den MCP auf: "+str(self.mcpOutputs[val]),logging)
-        pass
+        #logger("Setz den MCP auf: "+str(self.mcpOutputs[val]),logging)
 
     def getMcpOut(self):
         olatte = self.bus.read_byte_data(self.mcp_device, self.mcp_olatb)
