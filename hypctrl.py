@@ -25,6 +25,7 @@ class Hypctrl():
         GPIO.setmode(GPIO.BOARD) # Nutzung der Pin-Nummerierung, nicht GPIO-Nummegn
         GPIO.setup(self.Out_ext1, GPIO.OUT) # EXT1 -> for control of external Relais etc.
         GPIO.output(self.Out_ext1, GPIO.LOW) # Switch amp power supply off
+        self.v4l_running = False
 
     def setKodiNotification(self, title, msg):
         try:
@@ -36,6 +37,9 @@ class Hypctrl():
 
 
     def setScene(self, col=None):
+        if(self.v4l_running):
+            v4l_ret = subprocess.call(['/usr/bin/killall',  'hyperion-v4l2'])
+            self.v4l_running = False
         if(col is not None):
             if(type(col) is int):
                 self.color=int(col)
@@ -71,8 +75,9 @@ class Hypctrl():
                     '--blue-threshold', '0.1'
                     ]
             GPIO.output(self.Out_ext1, GPIO.LOW)
+            self.v4l_running = True
         elif self.color == 3:
-            v4l_ret = subprocess.call(['/usr/bin/killall',  'hyperion-v4l2'])
+            #v4l_ret = subprocess.call(['/usr/bin/killall',  'hyperion-v4l2'])
             args = ['-c',  self.cList[self.color+1]]
             msg = "Farbe: "+ self.cList[self.color+1]+" und Schrank"
             GPIO.output(self.Out_ext1, GPIO.HIGH)
