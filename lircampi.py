@@ -17,9 +17,9 @@ def signal_term_handler(signal, frame):
     logger("Got " + str(signal), logging)
     logger("Closing UDP Socket", logging)
     s_udp_sock.close()
-    
+
     logger("Closing lirc connection", logging)
-    lirc.exit()
+    lirc.deinit()
 
     logger("So long, sucker!", logging)
 
@@ -43,7 +43,7 @@ def main():
     s_udp_sock = socket.socket( socket.AF_INET,  socket.SOCK_DGRAM )
     sockid = lirc.init("lircsock")
     allow = lirc.set_blocking(True, sockid)
-    
+
     while True:
         try:
             codeIR_list = lirc.nextcode()
