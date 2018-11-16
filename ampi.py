@@ -26,6 +26,8 @@ from oledctrl import AmpiOled
 from volume import Volume
 from mcpctrl import Sources
 from hypctrl import Hypctrl
+from tcpServer import MyTCPSocketHandler
+import socketserver
 
 logging = True
 
@@ -74,6 +76,7 @@ class Hardware():
         self.In_vol_up = 36
         self.In_mute = 15
         self.validSources = ['Aus', 'CD', 'Schneitzlberger', 'Portable', 'Hilfssherriff', 'Bladdnspiela', 'Himbeer314']
+        self.source = "Aus"
 
         self.oled = oled
         self.hyp = hyp
@@ -285,8 +288,11 @@ class Hardware():
             self.hyp.setScene("Kodi")
         else:
             logger('Komischer Elisenzustand', logging)
+        self.source = src
         return()
 
+    def getSource(self):
+        return(self.source)
 
 
 class Ampi():
@@ -308,6 +314,7 @@ class Ampi():
         self.hw.setSource("Aus")  #Set initial source to Aus
 
         self.udpServer()
+        self.tcpServer()
 
         #tcpServer_t = Thread(target=tcpServer, args=(1, t_stop))
         #tcpServer_t.start()
@@ -335,6 +342,15 @@ class Ampi():
         logger("              So long sucker!", logging) #Fein auf Wiedersehen sagen
         sys.exit(0) #Und raus hier
 
+    def tcpServer(self):
+        sT = threading.Thread(target = self._tcpServer)
+        sT.setDaemon(True)
+        sT.start()
+
+    def _tcpServer(self):
+        server = socketserver.TCPServer((eth_addr, tcp_port), MyTCPSocketHandler)
+        server.serve_forever()
+
 
     def udpServer(self):
         logger("Starting UDP-Server at " + eth_addr + ":" + str(udp_port),logging)
@@ -349,7 +365,9 @@ class Ampi():
     def _udpServer(self):
         while(not self.t_stop.is_set()):
             data, addr = self.udpSock.recvfrom( 1024 )# Puffer-Groesse ist 1024 Bytes.
-            self.parseCmd(data) # Abfrage der Fernbedienung (UDP-Server), der Rest passiert per Interrupt/Event
+            ret = self.parseCmd(data) # Abfrage der Fernbedienung (UDP-Server), der Rest passiert per Interrupt/Event
+            print(ret.encode("utf-8"))
+            self.udpSock.sendto(ret.encode('utf-8'), addr)
 
     def stopKodiPlayer(self):
         try:
@@ -367,47 +385,48 @@ class Ampi():
             jcmd = json.loads(data)
         except:
             logger("Das ist mal kein JSON, pff!", logging)
-            valid = "nee"
-            return(valid)
+            ret = "nee"
+            return(ret)
         if(jcmd['Aktion'] == "Input"):
             logger("Input: " + jcmd['Parameter'], logging)
             #if jcmd['Parameter'] in self.validSources:
             logger("Source set remotely to " + data, logging)
             self.hw.setSource(jcmd['Parameter'])
             #source = jcmd['Parameter']
-            valid = "ja"
+            ret = self.hw.getSource()
         elif(jcmd['Aktion'] == "Hyperion"):
             logger("Remote hyperion control", logging)
             self.hyp.setScene()
-            valid = "ja"
+            ret = "ja"
         elif(jcmd['Aktion'] == "Volume"):
             if jcmd['Parameter'] in self.validVolCmd:
                 self.setVolume(jcmd['Parameter'])
-                valid = "ja"
+                ret = "ja"
             else:
-                valid = "nee"
+                ret = "nee"
         elif(jcmd['Aktion'] == "Switch"):
             if jcmd['Parameter'] == "DimOled":
                 self.hw.oled.toggleBlankScreen()
                 logger("Dim remote command toggled", logging)
-                valid = "ja"
+                ret = "ja"
             elif jcmd['Parameter'] == "Power":
                 self.hw.setSource("Aus")
                 hyperion_color = 1
                 self.hyp.setScene("Kodi")
                 self.stopKodiPlayer()
                 logger("Aus is fuer heit!", logging)
-                valid = "ja"
+                ret = "ja"
             else:
                 logger("Des bassd net.", logging)
-                valid = "nee"
-        elif data == "zustand":
-            valid = "zustand"
+                ret = "nee"
+        elif(jcmd['Aktion'] == "Zustand"):
+            logger("Wos für a Zustand?")
+            ret = self.hw.getSource()
         else:
             logger(data, logging)
             logger("Invalid remote command!", logging)
-            valid = "nee"
-        return(valid)
+            ret = "nee"
+        return(ret)
 
 
 
