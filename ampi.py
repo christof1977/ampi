@@ -364,10 +364,13 @@ class Ampi():
 
     def _udpServer(self):
         while(not self.t_stop.is_set()):
-            data, addr = self.udpSock.recvfrom( 1024 )# Puffer-Groesse ist 1024 Bytes.
-            ret = self.parseCmd(data) # Abfrage der Fernbedienung (UDP-Server), der Rest passiert per Interrupt/Event
-            print(ret.encode("utf-8"))
-            self.udpSock.sendto(ret.encode('utf-8'), addr)
+            try:
+                data, addr = self.udpSock.recvfrom( 1024 )# Puffer-Groesse ist 1024 Bytes.
+                ret = self.parseCmd(data) # Abfrage der Fernbedienung (UDP-Server), der Rest passiert per Interrupt/Event
+                self.udpSock.sendto(str(ret).encode('utf-8'), addr)
+            except Exception as e:
+                logger("Uiui, beim UDP senden/empfangen hat's kracht!" + str(e))
+
 
     def stopKodiPlayer(self):
         try:
@@ -378,6 +381,12 @@ class Ampi():
         except Exception as e:
             logger("Beim Kodi stoppen is wos passiert: " + str(e), logging)
 
+    def selectSource(self, jcmd):
+        logger("Input: " + jcmd['Parameter'], logging)
+        logger("Source set remotely to " + jcmd['Parameter'], logging)
+        self.hw.setSource(jcmd['Parameter'])
+        ret = {"Antwort":"bassd","Input":self.hw.getSource()}
+        return(json.dumps(ret))
 
     def parseCmd(self, data):
         data = data.decode()
@@ -385,23 +394,19 @@ class Ampi():
             jcmd = json.loads(data)
         except:
             logger("Das ist mal kein JSON, pff!", logging)
-            ret = "nee"
+            ret = json.dump(["Antwort", "Kaa JSON Dings!"])
             return(ret)
         if(jcmd['Aktion'] == "Input"):
-            logger("Input: " + jcmd['Parameter'], logging)
-            #if jcmd['Parameter'] in self.validSources:
-            logger("Source set remotely to " + data, logging)
-            self.hw.setSource(jcmd['Parameter'])
-            #source = jcmd['Parameter']
-            ret = self.hw.getSource()
+            ret = self.selectSource(jcmd)
         elif(jcmd['Aktion'] == "Hyperion"):
             logger("Remote hyperion control", logging)
             self.hyp.setScene()
-            ret = "ja"
+            ret = self.hyp.getScene()
         elif(jcmd['Aktion'] == "Volume"):
             if jcmd['Parameter'] in self.validVolCmd:
-                self.setVolume(jcmd['Parameter'])
-                ret = "ja"
+                ret = self.setVolume(jcmd['Parameter'])
+                ret = {"Antwort":"bassd","Volume":ret}
+                return(json.dumps(ret))
             else:
                 ret = "nee"
         elif(jcmd['Aktion'] == "Switch"):
@@ -432,12 +437,12 @@ class Ampi():
 
     def setVolume(self, val):
         if(val == "Up"):
-            self.hw.volume.incVolumePot()
+            ret = self.hw.volume.incVolumePot()
         elif(val == "Down"):
-            self.hw.volume.decVolumePot()
+            ret = self.hw.volume.decVolumePot()
         else:
-            self.hw.volume.toggleMute()
-        pass
+            ret = self.hw.volume.toggleMute()
+        return(ret)
 
     def setInput(self):
         pass
