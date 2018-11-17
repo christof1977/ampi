@@ -11,6 +11,8 @@ class Volume():
         self.Out_i2c_iso = 32
         self.minVol = 63  #63 für 63 Wiper Positionen, 33 für 33 Wiper Positionen
         self.volPotVal = 40
+        self.mute = False
+        self.volBeforeMute = 42
         self.bus = bus
         self.oled = oled
         #GPIO.setwarnings(False)
@@ -52,7 +54,7 @@ class Volume():
             if(display):
                 self.oled.setVolScreen(self.volPotVal)
             logger("Mach mal auf -"+ str(self.volPotVal) +"dB")
-            ret = 0
+            ret = self.volPotVal
         except:
             logger("Kann ich etz so net machn. Is der Ampi aus?", logging)
             self.oled.setVolScreen(99)
@@ -61,20 +63,24 @@ class Volume():
         return(ret)
 
     def incVolumePot(self):
-        if(self.volPotVal > 0):
+        if(self.mute):
+            self.mute = False
+            self.volPotVal = self.volBeforeMute
+        elif(self.volPotVal > 0):
             self.volPotVal -= 1
-            self.setVolumePot(self.volPotVal)
-            return(0)
         else:
             return(-1)
+        return(self.setVolumePot(self.volPotVal))
 
     def decVolumePot(self):
-        if(self.volPotVal < self.minVol):
+        if(self.mute):
+            self.mute = False
+            self.volPotVal = self.volBeforeMute
+        elif(self.volPotVal < self.minVol):
             self.volPotVal += 1
-            self.setVolumePot(self.volPotVal)
-            return(0)
         else:
             return(-1)
+        return(self.setVolumePot(self.volPotVal))
 
     def toggleMute(self):
         if(self.volPotVal != self.minVol):
@@ -86,8 +92,7 @@ class Volume():
             self.volPotVal = self.volBeforeMute
             self.mute = False
             logger("Nicht mehr stumm", logging)
-        self.setVolumePot(self.volPotVal)
-        return(self.mute)
+        return(self.setVolumePot(self.volPotVal))
 
     def getVolumePot(self):
         return(self.volPotVal)
