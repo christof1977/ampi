@@ -385,7 +385,11 @@ class Ampi():
         logger("Input: " + jcmd['Parameter'], logging)
         logger("Source set remotely to " + jcmd['Parameter'], logging)
         self.hw.setSource(jcmd['Parameter'])
-        ret = {"Antwort":"bassd","Input":self.hw.getSource()}
+        ret = self.hw.getSource()
+        if(ret == -1):
+            ret = {"Antwort":"bassd net","Input":ret}
+        else:
+            ret = {"Antwort":"bassd","Input":ret}
         return(json.dumps(ret))
 
     def parseCmd(self, data):
@@ -405,8 +409,7 @@ class Ampi():
         elif(jcmd['Aktion'] == "Volume"):
             if jcmd['Parameter'] in self.validVolCmd:
                 ret = self.setVolume(jcmd['Parameter'])
-                ret = {"Antwort":"bassd","Volume":ret}
-                return(json.dumps(ret))
+                return(ret)
             else:
                 ret = "nee"
         elif(jcmd['Aktion'] == "Switch"):
@@ -442,7 +445,11 @@ class Ampi():
             ret = self.hw.volume.decVolumePot()
         else:
             ret = self.hw.volume.toggleMute()
-        return(ret)
+        if(ret == -1):
+            ret = {"Antwort":"bassd net","Input":ret}
+        else:
+            ret = {"Antwort":"bassd","Input":ret}
+        return(json.dumps(ret))
 
     def setInput(self):
         pass
