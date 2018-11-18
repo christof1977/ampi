@@ -414,9 +414,12 @@ class Ampi():
                 ret = "nee"
         elif(jcmd['Aktion'] == "Switch"):
             if jcmd['Parameter'] == "DimOled":
-                self.hw.oled.toggleBlankScreen()
+                ret = self.hw.oled.toggleBlankScreen()
                 logger("Dim remote command toggled", logging)
-                ret = "ja"
+                if(ret):
+                    ret = {"Antwort":"Oled","Wert":"Aus"}
+                else:
+                    ret = {"Antwort":"Oled","Wert":"An"}
             elif jcmd['Parameter'] == "Power":
                 self.hw.setSource("Aus")
                 hyperion_color = 1
