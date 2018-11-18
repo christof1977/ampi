@@ -2,26 +2,28 @@
 #coding: utf8
 
 import lirc
-from libby import remoteAmpiUdp
+from libby import remoteAmpi
 import socket
 import signal
 import sys
-from libby.logger import logger
 import json
+import logging
+from systemd.journal import JournaldLogHandler
 
-logging = True
+log = logging.getLogger('LIRCAMPI')
+log.addHandler(JournaldLogHandler())
+log.setLevel(logging.INFO)
+
+
 
 
 def signal_term_handler(signal, frame):
-    global s_udp_sock
-    logger("Got " + str(signal), logging)
-    logger("Closing UDP Socket", logging)
-    s_udp_sock.close()
+    log.info("Got " + str(signal))
 
-    logger("Closing lirc connection", logging)
+    log.info("Closing lirc connection")
     lirc.deinit()
 
-    logger("So long, sucker!", logging)
+    log.info("So long, sucker!")
 
     sys.exit(0)
 
@@ -34,13 +36,11 @@ def lirc2json(cmd):
 
 
 def main():
-    logger("Starting amplifier lirc remote control service", logging)
+    log.info("Starting amplifier lirc remote control service")
 
-    global s_udp_sock
     signal.signal(signal.SIGTERM, signal_term_handler)
     addr = 'osmd.fritz.box'
     port = 5005
-    s_udp_sock = socket.socket( socket.AF_INET,  socket.SOCK_DGRAM )
     sockid = lirc.init("lircsock")
     allow = lirc.set_blocking(True, sockid)
 
@@ -49,8 +49,8 @@ def main():
             codeIR_list = lirc.nextcode()
             if(codeIR_list != [] and codeIR_list != None):
                 json_cmd = lirc2json(codeIR_list[0])
-                remoteAmpiUdp.sende(s_udp_sock, addr, port, json_cmd)
-                logger("Sending command " + json_cmd, logging)
+                remoteAmpi.udpRemote(json_cmd, addr=addr, port=port)
+                log.info("Sending command %s", json_cmd)
                 codeIR_list = []
         except KeyboardInterrupt:
             signal_term_handler(99, "")
