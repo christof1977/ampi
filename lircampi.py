@@ -17,14 +17,11 @@ log.setLevel(logging.INFO)
 
 
 
-def signal_term_handler(signal, frame):
+def signal_term_handler(signal, frame=""):
     log.info("Got " + str(signal))
-
     log.info("Closing lirc connection")
     lirc.deinit()
-
     log.info("So long, sucker!")
-
     sys.exit(0)
 
 
@@ -42,7 +39,7 @@ def main():
     addr = 'osmd.fritz.box'
     port = 5005
     sockid = lirc.init("lircsock")
-    allow = lirc.set_blocking(True, sockid)
+    allow = lirc.set_blocking(False, sockid)
 
     while True:
         try:
@@ -53,8 +50,11 @@ def main():
                 log.info("Sending command %s", json_cmd)
                 codeIR_list = []
         except KeyboardInterrupt:
-            signal_term_handler(99, "")
+            signal_term_handler(99)
             break
+        except Exception as e:
+            log.info(str(e))
+
 
 if __name__ == "__main__":
     main()
