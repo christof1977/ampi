@@ -399,46 +399,41 @@ class Ampi():
         except:
             logger("Das ist mal kein JSON, pff!", logging)
             ret = json.dumps({"Antwort": "Kaa JSON Dings!"})
-            return(ret)
         if(jcmd['Aktion'] == "Input"):
             ret = self.selectSource(jcmd)
         elif(jcmd['Aktion'] == "Hyperion"):
             logger("Remote hyperion control", logging)
-            ret = self.hyp.setScene()
-            ret = ({"Antwort": "Hyperion", "Szene": ret})
-            return(json.dumps(ret))
+            ret = json.dumps({"Antwort": "Hyperion", "Szene": self.hyp.setScene()})
         elif(jcmd['Aktion'] == "Volume"):
             if jcmd['Parameter'] in self.validVolCmd:
                 ret = self.setVolume(jcmd['Parameter'])
-                return(ret)
             else:
-                ret = "nee"
+                ret = json.dumps({"Antwort": "Kein echtes Volumen-Kommando"})
         elif(jcmd['Aktion'] == "Switch"):
             if jcmd['Parameter'] == "DimOled":
                 ret = self.hw.oled.toggleBlankScreen()
                 logger("Dim remote command toggled", logging)
                 if(ret):
-                    ret = {"Antwort":"Oled","Wert":"Aus"}
+                    ret = json.dumps({"Antwort":"Oled","Wert":"Aus"})
                 else:
-                    ret = {"Antwort":"Oled","Wert":"An"}
-                return(json.dumps(ret))
+                    ret = json.dumps({"Antwort":"Oled","Wert":"An"})
             elif jcmd['Parameter'] == "Power":
                 self.hw.setSource("Aus")
-                hyperion_color = 1
                 self.hyp.setScene("Kodi")
                 self.stopKodiPlayer()
                 logger("Aus is fuer heit!", logging)
-                ret = "ja"
+                ret = json.dumps({"Antwort":"Betrieb","Wert":"Aus"})
             else:
                 logger("Des bassd net.", logging)
-                ret = "nee"
+                ret = json.dumps({"Antwort":"Schalter","Wert":"Kein gültiges Schalter-Kommando"})
         elif(jcmd['Aktion'] == "Zustand"):
             logger("Wos für a Zustand?")
             ret = self.hw.getSource()
+            #TODO: Alle Zustände lesen und ausgeben
         else:
             logger(data, logging)
             logger("Invalid remote command!", logging)
-            ret = "nee"
+            ret = json.dumps({"Antwort":"Fehler","Wert":"Kein gültiges Kommando"})
         return(ret)
 
 
