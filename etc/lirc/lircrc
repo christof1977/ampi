@@ -1,0 +1,48 @@
+begin
+button = KEY_F4
+prog = lircsock
+config = Input_CD
+end
+begin
+button = KEY_F5
+prog = lircsock
+config = Input_Bladdnspiela
+end
+begin
+button = KEY_F3
+prog = lircsock
+config = Input_Himbeer314
+end
+begin
+button = KEY_F2
+prog = lircsock
+config = Input_Schneitzlberger
+end
+begin
+button = KEY_F11
+repeat = 1
+prog = lircsock
+config = Volume_Down
+end
+begin
+button = KEY_8
+prog = lircsock
+config = Volume_Mute
+end
+begin
+button = KEY_F12
+repeat = 1
+prog = lircsock
+config = Volume_Up
+end
+begin
+button = KEY_F7
+prog = lircsock
+config = Hyperion_
+end
+begin
+button = KEY_F1
+prog = lircsock
+config = Switch_Power
+end
+

@@ -1,0 +1,16 @@
+[Unit]
+Description=Amplifier Input Control 
+After=network-online.target
+[Service]
+Type=simple
+User=osmc
+Group=osmc
+UMask=007
+ExecStart=/opt/ampi/ampi.py
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target
+
