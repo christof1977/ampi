@@ -91,7 +91,7 @@ class Hypctrl():
             self.oled.setMsgScreen(l1="Es werde Licht:", l3=self.cList[self.color])
         self.setKodiNotification("Es werde Licht", self.cList[self.color])
         #hyp = subprocess.Popen([cmd, *args])
-        return()
+        return(self.cList[self.color])
 
     def getScene(self):
         return(self.cList[self.color])

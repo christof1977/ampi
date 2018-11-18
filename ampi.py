@@ -398,14 +398,15 @@ class Ampi():
             jcmd = json.loads(data)
         except:
             logger("Das ist mal kein JSON, pff!", logging)
-            ret = json.dump(["Antwort", "Kaa JSON Dings!"])
+            ret = json.dumps({"Antwort": "Kaa JSON Dings!"})
             return(ret)
         if(jcmd['Aktion'] == "Input"):
             ret = self.selectSource(jcmd)
         elif(jcmd['Aktion'] == "Hyperion"):
             logger("Remote hyperion control", logging)
-            self.hyp.setScene()
-            ret = self.hyp.getScene()
+            ret = self.hyp.setScene()
+            ret = ({"Antwort": "Hyperion", "Szene": ret})
+            return(json.dumps(ret))
         elif(jcmd['Aktion'] == "Volume"):
             if jcmd['Parameter'] in self.validVolCmd:
                 ret = self.setVolume(jcmd['Parameter'])
@@ -420,6 +421,7 @@ class Ampi():
                     ret = {"Antwort":"Oled","Wert":"Aus"}
                 else:
                     ret = {"Antwort":"Oled","Wert":"An"}
+                return(json.dumps(ret))
             elif jcmd['Parameter'] == "Power":
                 self.hw.setSource("Aus")
                 hyperion_color = 1
