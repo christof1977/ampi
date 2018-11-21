@@ -97,6 +97,9 @@ class Volume():
     def getVolumePot(self):
         return(self.volPotVal)
 
+    def getVolume(self):
+        return(self.volPotVal)
+
 
 
 
