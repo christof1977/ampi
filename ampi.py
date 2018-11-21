@@ -77,6 +77,8 @@ class Hardware():
         self.In_mute = 15
         self.validSources = ['Aus', 'CD', 'Schneitzlberger', 'Portable', 'Hilfssherriff', 'Bladdnspiela', 'Himbeer314']
         self.source = "Aus"
+        self.ampPwr = False
+        self.tvPwr = False
 
         self.oled = oled
         self.hyp = hyp
@@ -155,15 +157,33 @@ class Hardware():
             logger("An error orccured during GpioInt("+str(channel)+")", logging)
             return()
 
-    def ampPwr(self, val):
+    def setAmpPwr(self, *args):
         # Hier wird später der Leistungsverstärker an und ausgeschaltet
-        logger("PA2200: "+str(val))
-        pass
+        if(len(args) == 0):
+            self.ampPwr = not self.ampPwr
+        elif(len(args) == 1 and type(args[0]) is bool):
+            self.ampPwr = args[0]
+        else:
+            logger("ampPwr: Fehler")
+        logger("PA2200: "+str(self.ampPwr))
+        return(self.ampPwr)
 
-    def tvPwr(self, val):
+    def getAmpPwr(self):
+        return(self.ampPwr)
+
+    def setTvPwr(self, *args):
         # Hier wird später der Fernseher an- und ausgeschaltet
-        logger("TV: "+str(val))
-        pass
+        if(len(args) == 0):
+            self.tvPwr = not self.tvPwr
+        elif(len(args) == 1 and type(args[0]) is bool):
+            self.tvPwr = args[0]
+        else:
+            logger("tvPwr: Fehler")
+        logger("TV: "+str(self.tvPwr))
+        return(self.tvPwr)
+
+    def getTvPwr(self):
+        return(self.tvPwr)
 
     def ampiPwr(self, val):
         try:
@@ -235,44 +255,44 @@ class Hardware():
             return()
         elif src == "Schneitzlberger":
             self.setKodiAudio("digital")
-            self.tvPwr(True)
-            self.ampPwr(True)
+            self.setTvPwr(True)
+            self.setAmpPwr(True)
             self.ampiPwr(False)
             self.sources.setMcpOut(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "CD":
-            self.tvPwr(False)
-            self.ampPwr(True)
+            self.setTvPwr(False)
+            self.setAmpPwr(True)
             self.ampiPwr(True)
             self.sources.setMcpOut(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Portable":
-            self.tvPwr(False)
-            self.ampPwr(True)
+            self.setTvPwr(False)
+            self.setAmpPwr(True)
             self.ampiPwr(True)
             self.sources.setMcpOut(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Hilfssherriff":
-            self.tvPwr(False)
-            self.ampPwr(True)
+            self.setTvPwr(False)
+            self.setAmpPwr(True)
             self.ampiPwr(True)
             self.sources.setMcpOut(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Bladdnspiela":
-            self.tvPwr(False)
-            self.ampPwr(True)
+            self.setTvPwr(False)
+            self.setAmpPwr(True)
             self.ampiPwr(True)
             self.sources.setMcpOut(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Himbeer314":
             self.setKodiAudio("analog")
-            self.tvPwr(False)
-            self.ampPwr(True)
+            self.setTvPwr(False)
+            self.setAmpPwr(True)
             self.ampiPwr(True)
             self.sources.setMcpOut(src)
             self.setKodiNotification("Ampi-Eingang", src)
@@ -282,8 +302,8 @@ class Hardware():
             self.oled.setMsgScreen(l1="Eingang", l3="Alles aus etz!")
             self.setKodiNotification("Ampi-Eingang", src)
             self.sources.setMcpOut("Schneitzlberger")
-            self.tvPwr(False)
-            self.ampPwr(False)
+            self.setTvPwr(False)
+            self.setAmpPwr(False)
             self.ampiPwr(False)
             self.hyp.setScene("Kodi")
         else:
@@ -392,6 +412,17 @@ class Ampi():
             ret = {"Antwort":"bassd","Input":ret}
         return(json.dumps(ret))
 
+    def ampiZustand(self):
+        zustand  = json.dumps({"Antwort" : "Zustand",
+                               "Input" : self.hw.getSource(),
+                               "Hyperion" : self.hyp.getScene(),
+                               "Volume" : self.hw.volume.getVolume(),
+                               "OledBlank" : self.hw.oled.getBlankScreen(),
+                               "TV" : self.hw.getTvPwr(),
+                               "PA2200" : self.hw.getAmpPwr()
+                               })
+        return(zustand)
+
     def parseCmd(self, data):
         data = data.decode()
         try:
@@ -428,7 +459,7 @@ class Ampi():
                 ret = json.dumps({"Antwort":"Schalter","Wert":"Kein gültiges Schalter-Kommando"})
         elif(jcmd['Aktion'] == "Zustand"):
             logger("Wos für a Zustand?")
-            ret = self.hw.getSource()
+            ret = self.ampiZustand()
             #TODO: Alle Zustände lesen und ausgeben
         else:
             logger(data, logging)
@@ -451,8 +482,6 @@ class Ampi():
             ret = {"Antwort":"bassd","Input":ret}
         return(json.dumps(ret))
 
-    def setInput(self):
-        pass
 
 
 

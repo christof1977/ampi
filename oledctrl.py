@@ -76,6 +76,9 @@ class AmpiOled:
         self.blank = not self.blank
         return(self.blank)
 
+    def getBlankScreen(self): # Toggle screen blanking, takes effect with next run of clearScreen thread loop
+        return(self.blank)
+
     def findX(self, s):
         l = self.oledCols - len(s)
         return(l//2)
