@@ -20,11 +20,11 @@ class Hypctrl():
         self.oled = oled
         self.cList = ["Off", "Kodi", "BluRay", "Schrank", "FF8600", "red" , "green"]
         self.color = 0
-        self.Out_ext1 = 16
+        self.Out_ext0 = 8
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BOARD) # Nutzung der Pin-Nummerierung, nicht GPIO-Nummegn
-        GPIO.setup(self.Out_ext1, GPIO.OUT) # EXT1 -> for control of external Relais etc.
-        GPIO.output(self.Out_ext1, GPIO.LOW) # Switch amp power supply off
+        GPIO.setup(self.Out_ext0, GPIO.OUT) # EXT0 -> for control of external Relais etc.
+        GPIO.output(self.Out_ext0, GPIO.LOW) # Switch amp power supply off
         self.v4l_running = False
 
     def setKodiNotification(self, title, msg):
@@ -56,10 +56,10 @@ class Hypctrl():
         cmd = '/usr/bin/hyperion-remote'
         if self.color == 0:
             args = ['-c', 'black']
-            GPIO.output(self.Out_ext1, GPIO.LOW)
+            GPIO.output(self.Out_ext0, GPIO.LOW)
         elif self.color == 1:
             args = ['-x']
-            GPIO.output(self.Out_ext1, GPIO.LOW)
+            GPIO.output(self.Out_ext0, GPIO.LOW)
         elif self.color == 2:
             args = ['-x']
             cmd = '/usr/bin/hyperion-v4l2'
@@ -74,18 +74,18 @@ class Hypctrl():
                     '--green-threshold', '0.1',
                     '--blue-threshold', '0.1'
                     ]
-            GPIO.output(self.Out_ext1, GPIO.LOW)
+            GPIO.output(self.Out_ext0, GPIO.LOW)
             self.v4l_running = True
         elif self.color == 3:
             #v4l_ret = subprocess.call(['/usr/bin/killall',  'hyperion-v4l2'])
             args = ['-c',  self.cList[self.color+1]]
             msg = "Farbe: "+ self.cList[self.color+1]+" und Schrank"
-            GPIO.output(self.Out_ext1, GPIO.HIGH)
+            GPIO.output(self.Out_ext0, GPIO.HIGH)
             #self.color += 1
         elif self.color > 3:
             args = ['-c',  self.cList[self.color]]
             msg = "Farbe: " + self.cList[self.color]
-            GPIO.output(self.Out_ext1, GPIO.LOW)
+            GPIO.output(self.Out_ext0, GPIO.LOW)
         hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
         if(self.oled is not None):
             self.oled.setMsgScreen(l1="Es werde Licht:", l3=self.cList[self.color])

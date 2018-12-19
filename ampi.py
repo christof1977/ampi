@@ -69,7 +69,8 @@ class Hardware():
         self.bus = smbus.SMBus(1) # Rev 2 Pi
 
 
-        self.Out_ext2 = 18
+        self.outPa = 16
+        self.outTv = 18
         self.Out_pwr_rel = 29
         self.In_mcp_int = 37
         self.In_vol_down = 7
@@ -100,10 +101,10 @@ class Hardware():
         logger("init GPIOs", logging)
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BOARD) # Nutzung der Pin-Nummerierung, nicht GPIO-Nummegn
-        GPIO.setup(self.Out_ext2, GPIO.OUT) # EXT2 -> for control of external Relais etc.
+        GPIO.setup(self.outPa, GPIO.OUT) # EXT1 -> for control of external Relais etc.
+        GPIO.setup(self.outTv, GPIO.OUT) # EXT2 -> for control of external Relais etc.
         GPIO.setup(self.Out_pwr_rel, GPIO.OUT) # PWR_REL -> for control of amp power supply (vol_ctrl, riaa_amp)
         GPIO.output(self.Out_pwr_rel, GPIO.LOW) # Switch amp power supply off
-
 
 
         GPIO.setup(self.In_mcp_int, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Interrupt input from MCP (GPIO26)
@@ -165,7 +166,11 @@ class Hardware():
             self.ampPwr = args[0]
         else:
             logger("ampPwr: Fehler")
-        logger("PA2200: "+str(self.ampPwr))
+        if(self.ampPwr):
+            GPIO.output(self.outPa, GPIO.HIGH)
+        else:
+            GPIO.output(self.outPa, GPIO.LOW)
+        logger("PA2200: " + str(self.ampPwr))
         return(self.ampPwr)
 
     def getAmpPwr(self):
@@ -179,6 +184,10 @@ class Hardware():
             self.tvPwr = args[0]
         else:
             logger("tvPwr: Fehler")
+        if(self.tvPwr):
+            GPIO.output(self.outTv, GPIO.HIGH)
+        else:
+            GPIO.output(self.outTv, GPIO.LOW)
         logger("TV: "+str(self.tvPwr))
         return(self.tvPwr)
 
