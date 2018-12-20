@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-
-
 import os
 import sys
 import time
@@ -31,47 +29,22 @@ import socketserver
 
 logging = True
 
-
-
 reboot_count = 0
-
-#Listen der erlaubten Kommandos
-source = "Schneitzlberger"
-
-
-# Liste der Hyperion-Farben
-#hyperion_color = 1 # Als global zu benutzen
-
-
 
 eth_addr='osmd.fritz.box'
 udp_port=5005 #An diesen Port wird der UDP-Server gebunden
 tcp_port=5015
-
-
-
-
-
-
-
-
-
-
-
-
 
 class Hardware():
     def __init__(self, oled, hyp):
         logger("init class hardware",logging)
         import RPi.GPIO as GPIO
         import smbus
-        #import threading
         self.bus = smbus.SMBus(1) # Rev 2 Pi
 
-
-        self.outPa = 16
-        self.outTv = 18
-        self.Out_pwr_rel = 29
+        self.outPa = 16 #Relais für PA2200
+        self.outTv = 18 #Relais für TV und Sony-Verstärker
+        self.Out_pwr_rel = 29 #Relais für Ampi-Ringkerntrafo
         self.In_mcp_int = 37
         self.In_vol_down = 7
         self.In_vol_up = 36
@@ -80,18 +53,11 @@ class Hardware():
         self.source = "Aus"
         self.ampPwr = False
         self.tvPwr = False
-
-        self.oled = oled
-        self.hyp = hyp
-
-        self.initGpios()
-
-        self.volume = Volume(self.oled, self.bus)
-
-        #self.t_stop = threading.Event()
-        # call thread to clear mcp interrupt from time to time (in case of error)
-        self.sources = Sources(self.oled, self.bus)
-        #sources..clearMcpInt()
+        self.oled = oled #OLED-Objekt erzeugen
+        self.hyp = hyp #Hyperion-Objekt erzeugen
+        self.initGpios() #GPIOs initialisieren
+        self.volume = Volume(self.oled, self.bus) #Volumen-Objekt erzeugen
+        self.sources = Sources(self.oled, self.bus) #Quellen-Objekt erzeugen
 
     def __del__(self):
         pass
@@ -106,7 +72,6 @@ class Hardware():
         GPIO.setup(self.Out_pwr_rel, GPIO.OUT) # PWR_REL -> for control of amp power supply (vol_ctrl, riaa_amp)
         GPIO.output(self.Out_pwr_rel, GPIO.LOW) # Switch amp power supply off
 
-
         GPIO.setup(self.In_mcp_int, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Interrupt input from MCP (GPIO26)
         GPIO.setup(self.In_vol_down, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # vol_down key
         GPIO.setup(self.In_mute, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # mute key
@@ -116,8 +81,6 @@ class Hardware():
         GPIO.add_event_detect(self.In_mcp_int, GPIO.FALLING, callback = self.gpioInt)  # Set Interrupt for MCP (GPIO26)
         GPIO.add_event_detect(self.In_mute, GPIO.RISING, callback = self.gpioInt, bouncetime = 250)  # Set Interrupt for mute key
         GPIO.add_event_detect(self.In_vol_up, GPIO.RISING, callback = self.gpioInt)  # Set Interrupt for vol_up key
-
-
 
 
     def gpioInt(self, channel): #Interrupt Service Routine
@@ -228,11 +191,11 @@ class Hardware():
                      subprocess.Popen("reboot")
         elif inp in valid_sources:
             #Hier geht's rein, wenn nicht mit "off" oder "Schneitzlberger" aufgerufen wurde
-                # Wenn der Preamp noch nicht läuft, werden die entsprechenden Meldungen ausgegeben,
-                # der Eingang zur Trennung der Endstufe auf Schneitzlberger gesetzt, der Preamp
-                # angeschaltet und dann (nach 2 Sekunden Wartezeit) die Option des DS1882 konfiguriert
-                # sowie die letzte Lautstärke gesetzt und schlussendlich der entsprechende Eingang
-                # ausgewählt.
+            # Wenn der Preamp noch nicht läuft, werden die entsprechenden Meldungen ausgegeben,
+            # der Eingang zur Trennung der Endstufe auf Schneitzlberger gesetzt, der Preamp
+            # angeschaltet und dann (nach 2 Sekunden Wartezeit) die Option des DS1882 konfiguriert
+            # sowie die letzte Lautstärke gesetzt und schlussendlich der entsprechende Eingang
+            # ausgewählt.
             #Hier geht's rein, wenn der source-Wert nicht gültig ist
             logger("Ampswitch else ... nothing happened.", logging)
         return()
