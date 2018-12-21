@@ -274,10 +274,10 @@ class Hardware():
             self.oled.setMsgScreen(l1="Servusla.", l3="Alles aus etz!")
             self.setKodiNotification("Ampi-Eingang", src)
             self.sources.setMcpOut("Schneitzlberger")
+            self.ampiPwr(False)
             self.setAmpPwr(False)
             time.sleep(0.5)
             self.setTvPwr(False)
-            self.ampiPwr(False)
             self.hyp.setScene("Kodi")
         else:
             logger('Komischer Elisenzustand', logging)
