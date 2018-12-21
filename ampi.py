@@ -271,11 +271,12 @@ class Hardware():
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Aus":
             self.setKodiAudio("digital")
-            self.oled.setMsgScreen(l1="Eingang", l3="Alles aus etz!")
+            self.oled.setMsgScreen(l1="Servusla.", l3="Alles aus etz!")
             self.setKodiNotification("Ampi-Eingang", src)
             self.sources.setMcpOut("Schneitzlberger")
-            self.setTvPwr(False)
             self.setAmpPwr(False)
+            time.sleep(0.5)
+            self.setTvPwr(False)
             self.ampiPwr(False)
             self.hyp.setScene("Kodi")
         else:
