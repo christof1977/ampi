@@ -271,14 +271,19 @@ class Hardware():
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Aus":
             self.setKodiAudio("digital")
+            time.sleep(0.2)
             self.oled.setMsgScreen(l1="Servusla.", l3="Alles aus etz!")
             self.setKodiNotification("Ampi-Eingang", src)
             self.sources.setMcpOut("Schneitzlberger")
+            time.sleep(0.1)
             self.ampiPwr(False)
+            time.sleep(0.2)
             self.setAmpPwr(False)
             time.sleep(0.5)
             self.setTvPwr(False)
+            time.sleep(0.2)
             self.hyp.setScene("Kodi")
+            time.sleep(0.1)
         else:
             logger('Komischer Elisenzustand', logging)
         self.source = src
