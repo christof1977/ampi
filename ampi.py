@@ -427,9 +427,10 @@ class Ampi():
                 else:
                     ret = json.dumps({"Antwort":"Oled","Wert":"An"})
             elif jcmd['Parameter'] == "Power":
-                self.hw.setSource("Aus")
-                self.hyp.setScene("Kodi")
                 self.stopKodiPlayer()
+                time.sleep(0.2)
+                self.hw.setSource("Aus")
+                #self.hyp.setScene("Kodi")
                 logger("Aus is fuer heit!", logging)
                 ret = json.dumps({"Antwort":"Betrieb","Wert":"Aus"})
             else:
