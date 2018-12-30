@@ -21,6 +21,10 @@ class Sources():
         self.mcp_defvala = 0x06 # Default Comparison Value for Interrupt (GPA)
         self.mcp_intcona = 0x08 # Intertupt on change control register (GPA)
         self.mcp_intcapa = 0x10 # Register INTCAPA
+        self.amp = 0x40
+        self.head = 0x80
+        self.ampState = False
+        self.headState = False
 
         # Initial clear of MCP-Interrupt
         self.bus.read_byte_data(self.mcp_device, self.mcp_gpioa)
@@ -36,55 +40,60 @@ class Sources():
         self.t_stop = threading.Event()
         self.clearMcpInt()
 
-
     def setAmpOut(self, *args):
         # Amp-Bit: 0x40
         state = self.getMcpOut()
-        if self.getAmpOut():
-            newState = state & 0b10111111
+        if args:
+            self.ampState = not args[0]
+        if self.ampState:
+            newState = state & ~self.amp
+            self.ampState = False
         else:
-            newState = state | 0b01000000
+            newState = state | self.amp
+            self.ampState = True
         self.setMcpOut(newState)
         return self.getAmpOut()
-
 
     def getAmpOut(self):
         # Amp-Bit: 0x40
         mcpState = self.getMcpOut()
-        if mcpState & 0x40:
+        if mcpState & self.amp:
             #logger("Amp-Ausgang aktiv")
-            ampState = True
+            self.ampState = True
         else:
             #logger("Amp-Ausgang inaktiv")
-            ampState = False
-        return ampState
+            self.ampState = False
+        return self.ampState
 
     def setHeadOut(self, *args):
         # Amp-Bit: 0x80
         state = self.getMcpOut()
-        if self.getHeadOut():
-            newState = state & 0b01111111
+        if args:
+            self.headState = not args[0]
+        if self.headState:
+            newState = state & ~self.head
+            self.headState = False
         else:
-            newState = state | 0b10000000
+            newState = state | self.head
+            self.headState = True
         self.setMcpOut(newState)
         return self.getHeadOut()
-
-
 
     def getHeadOut(self):
         # Head-Bit: 0x80
         mcpState = self.getMcpOut()
-        if mcpState & 0x80:
-            logger("Headphhone-Ausgang aktiv")
-            headState = True
+        if mcpState & self.head:
+            self.headState = True
         else:
-            logger("Headphone-Ausgang inaktiv")
-            headState = False
-        return headState
-
+            self.headState = False
+        return self.headState
 
     def setInput(self, val):
         self.setMcpOut(self.mcpOutputs[val])
+        if(val == "Aus"):
+            self.setAmpOut(False)
+        else:
+            self.setAmpOut(True)
 
     def setMcpOut(self, val):
         self.bus.write_byte_data(self.mcp_device, self.mcp_olatb, val)
@@ -92,8 +101,7 @@ class Sources():
 
     def getMcpOut(self):
         olatte = self.bus.read_byte_data(self.mcp_device, self.mcp_olatb)
-        return(olatte)
-
+        return olatte
 
     def getMcpInt(self):
         #Diese Funktion wird aufgerufen, wenn ein Interrupt vom MCP eintrudelt. Als erstes

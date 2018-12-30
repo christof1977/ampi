@@ -57,7 +57,6 @@ class Hypctrl():
                 self.color=int(col)
             else:
                 colInd = self.cList.index(col)
-                print(self.cList[colInd])
                 self.color = colInd
         else:
             if(self.color == len(self.cList)-1):
