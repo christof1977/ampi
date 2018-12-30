@@ -24,7 +24,8 @@ class Sources():
 
         # Initial clear of MCP-Interrupt
         self.bus.read_byte_data(self.mcp_device, self.mcp_gpioa)
-        self.mcpOutputs = {"Aus":0x00,"Schneitzlberger":0x00, "CD":0x28, "Portable":0x24,"Hilfssherriff":0x22,"Bladdnspiela":0x21,"Himbeer314":0x30}
+        #self.mcpOutputs = {"Aus":0x00,"Schneitzlberger":0x00, "CD":0x28, "Portable":0x24,"Hilfssherriff":0x22,"Bladdnspiela":0x21,"Himbeer314":0x30}
+        self.mcpOutputs = {"Aus":0x00,"Schneitzlberger":0x01, "CD":0x20, "Portable":0x08,"Hilfssherriff":0x10,"Bladdnspiela":0x04,"Himbeer314":0x02}
 
         # Definiere GPA als Input
         # Binaer: 0 bedeutet Output, 1 bedeutet Input
@@ -36,9 +37,57 @@ class Sources():
         self.clearMcpInt()
 
 
+    def setAmpOut(self, *args):
+        # Amp-Bit: 0x40
+        state = self.getMcpOut()
+        if self.getAmpOut():
+            newState = state & 0b10111111
+        else:
+            newState = state | 0b01000000
+        self.setMcpOut(newState)
+        return self.getAmpOut()
+
+
+    def getAmpOut(self):
+        # Amp-Bit: 0x40
+        mcpState = self.getMcpOut()
+        if mcpState & 0x40:
+            #logger("Amp-Ausgang aktiv")
+            ampState = True
+        else:
+            #logger("Amp-Ausgang inaktiv")
+            ampState = False
+        return ampState
+
+    def setHeadOut(self, *args):
+        # Amp-Bit: 0x80
+        state = self.getMcpOut()
+        if self.getHeadOut():
+            newState = state & 0b01111111
+        else:
+            newState = state | 0b10000000
+        self.setMcpOut(newState)
+        return self.getHeadOut()
+
+
+
+    def getHeadOut(self):
+        # Head-Bit: 0x80
+        mcpState = self.getMcpOut()
+        if mcpState & 0x80:
+            logger("Headphhone-Ausgang aktiv")
+            headState = True
+        else:
+            logger("Headphone-Ausgang inaktiv")
+            headState = False
+        return headState
+
+
+    def setInput(self, val):
+        self.setMcpOut(self.mcpOutputs[val])
 
     def setMcpOut(self, val):
-        self.bus.write_byte_data(self.mcp_device, self.mcp_olatb, self.mcpOutputs[val])
+        self.bus.write_byte_data(self.mcp_device, self.mcp_olatb, val)
         #logger("Setz den MCP auf: "+str(self.mcpOutputs[val]),logging)
 
     def getMcpOut(self):
