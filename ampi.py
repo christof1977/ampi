@@ -254,6 +254,8 @@ class Hardware():
             self.sources.setInput(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
+            time.sleep(0.2)
+            self.hyp.setScene("Kodi")
         elif src == "CD":
             self.setTvPwr(False)
             self.setAmpPwr(True)
