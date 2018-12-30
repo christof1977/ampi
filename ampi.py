@@ -45,10 +45,10 @@ class Hardware():
         self.outPa = 18 #Relais für PA2200
         self.outTv = 16 #Relais für TV und Sony-Verstärker
         self.Out_pwr_rel = 29 #Relais für Ampi-Ringkerntrafo
-        self.In_mcp_int = 37
-        self.In_vol_down = 7
-        self.In_vol_up = 36
-        self.In_mute = 15
+        self.inMcpInt = 37
+        self.inVolDir = 36
+        self.inVolClk  = 7
+        self.inVolMute = 15
         self.validSources = ['Aus', 'CD', 'Schneitzlberger', 'Portable', 'Hilfssherriff', 'Bladdnspiela', 'Himbeer314']
         self.source = "Aus"
         self.ampPwr = False
@@ -72,20 +72,20 @@ class Hardware():
         GPIO.setup(self.Out_pwr_rel, GPIO.OUT) # PWR_REL -> for control of amp power supply (vol_ctrl, riaa_amp)
         GPIO.output(self.Out_pwr_rel, GPIO.LOW) # Switch amp power supply off
 
-        GPIO.setup(self.In_mcp_int, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Interrupt input from MCP (GPIO26)
-        GPIO.setup(self.In_vol_down, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # vol_down key
-        GPIO.setup(self.In_mute, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # mute key
-        GPIO.setup(self.In_vol_up, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # vol_up key
+        GPIO.setup(self.inMcpInt, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Interrupt input from MCP (GPIO26)
+        GPIO.setup(self.inVolMute, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # mute key
+        GPIO.setup(self.inVolClk, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # vol_up key
+        GPIO.setup(self.inVolDir, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # vol_up key
 
         #Set interrupts
-        GPIO.add_event_detect(self.In_mcp_int, GPIO.FALLING, callback = self.gpioInt)  # Set Interrupt for MCP (GPIO26)
-        GPIO.add_event_detect(self.In_mute, GPIO.RISING, callback = self.gpioInt, bouncetime = 250)  # Set Interrupt for mute key
-        GPIO.add_event_detect(self.In_vol_up, GPIO.RISING, callback = self.gpioInt)  # Set Interrupt for vol_up key
+        GPIO.add_event_detect(self.inMcpInt, GPIO.FALLING, callback = self.gpioInt)  # Set Interrupt for MCP (GPIO26)
+        GPIO.add_event_detect(self.inVolMute, GPIO.RISING, callback = self.gpioInt, bouncetime = 250)  # Set Interrupt for mute key
+        GPIO.add_event_detect(self.inVolClk, GPIO.RISING, callback = self.gpioInt)  # Set Interrupt for vol_up key
 
 
     def gpioInt(self, channel): #Interrupt Service Routine
         #This function is called, if an interrupt (GPIO) occurs; input parameter is the pin, where the interrupt occured; not needed here
-        if channel == 37: #Interrupt from MCP
+        if channel == self.inMcpInt: #Interrupt from MCP
             src = self.sources.getMcpInt()
             if src == "Nixtun":
                 return()
@@ -104,16 +104,16 @@ class Hardware():
                 logger("Switching hyperion to ", logging)
                 self.hyp.setScene()
                 return()
-        elif channel == 36: # Drehn am Rädle
-            if GPIO.input(7): # Rechtsrum drehn
-                logger("Lauter", logging)
-                self.volume.incVolumePot()
-            else: # Linksrum drehn
+        elif channel == self.inVolClk: # Drehn am Rädle
+            if GPIO.input(self.inVolDir): # Linksrum drehn
                 logger("Leiser", logging)
                 self.volume.decVolumePot()
+            else: # Linksrum drehn
+                logger("Lauter", logging)
+                self.volume.incVolumePot()
             time.sleep(0.1)
             return()
-        elif channel == 15: # mute key pressed
+        elif channel == self.inVolMute: # mute key pressed
             logger("Ton aus", logging)
             mute = self.volume.toggleMute()
             return()
