@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env pyehon3
 # -*- coding: utf-8 -*-
 
 import os
@@ -9,7 +9,6 @@ import RPi.GPIO as GPIO
 import smbus
 import syslog
 import socket
-import time
 import threading
 from threading import Thread
 import signal
@@ -333,6 +332,7 @@ class Ampi():
         time.sleep(1.1) #Short break to make sure the display is cleaned
 
         self.hw.setSource("Aus")  #Set initial source to Aus
+        self.t_stop = threading.Event()
 
         self.udpServer()
         self.tcpServer()
@@ -362,6 +362,16 @@ class Ampi():
         #so.close()
         logger("              So long sucker!", logging) #Fein auf Wiedersehen sagen
         sys.exit(0) #Und raus hier
+
+    def clearTimer(self):
+        ciT = threading.Thread(target=self._clearTimer)
+        ciT.setDaemon(True)
+        ciT.start()
+
+    def _clearTimer(self):
+        while(not self.t_stop.is_set()):
+            mc_restart_cnt = 0 # Clear mediacenter reboot counter
+            self.t_stop.wait(3)
 
     def tcpServer(self):
         sT = threading.Thread(target = self._tcpServer)
@@ -466,8 +476,10 @@ class Ampi():
                 logger("Aus is fuer heit!", logging)
                 ret = json.dumps({"Antwort":"Betrieb","Wert":"Aus"})
             elif jcmd['Parameter'] == "Mediacenter":
-                os.system('sudo systemctl restart mediacenter')
-                logger("Mediaceenter wird neu gestart", logging)
+                mc_restart_cnt += 1
+                if mc_restart_cnt >= 2:
+                    os.system('sudo systemctl restart mediacenter')
+                    logger("Mediaceenter wird neu gestart", logging)
             else:
                 logger("Des bassd net.", logging)
                 ret = json.dumps({"Antwort":"Schalter","Wert":"Kein gültiges Schalter-Kommando"})
