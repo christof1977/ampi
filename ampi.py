@@ -1,4 +1,4 @@
-#!/usr/bin/env pyehon3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import os
@@ -332,7 +332,9 @@ class Ampi():
         time.sleep(1.1) #Short break to make sure the display is cleaned
 
         self.hw.setSource("Aus")  #Set initial source to Aus
+        self.mc_restart_cnt = 0
         self.t_stop = threading.Event()
+        self.timer()
 
         self.udpServer()
         self.tcpServer()
@@ -370,7 +372,7 @@ class Ampi():
 
     def _clearTimer(self):
         while(not self.t_stop.is_set()):
-            mc_restart_cnt = 0 # Clear mediacenter reboot counter
+            self.mc_restart_cnt = 0 # Clear mediacenter reboot counter
             self.t_stop.wait(3)
 
     def tcpServer(self):
@@ -476,8 +478,8 @@ class Ampi():
                 logger("Aus is fuer heit!", logging)
                 ret = json.dumps({"Antwort":"Betrieb","Wert":"Aus"})
             elif jcmd['Parameter'] == "Mediacenter":
-                mc_restart_cnt += 1
-                if mc_restart_cnt >= 2:
+                self.mc_restart_cnt += 1
+                if self.mc_restart_cnt >= 2:
                     os.system('sudo systemctl restart mediacenter')
                     logger("Mediaceenter wird neu gestart", logging)
             else:
