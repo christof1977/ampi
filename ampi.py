@@ -479,9 +479,11 @@ class Ampi():
                 ret = json.dumps({"Antwort":"Betrieb","Wert":"Aus"})
             elif jcmd['Parameter'] == "Mediacenter":
                 self.mc_restart_cnt += 1
+                ret = json.dumps({"Antwort":"Mediacenter","Wert":"BaldRestart"})
                 if self.mc_restart_cnt >= 2:
                     os.system('sudo systemctl restart mediacenter')
                     logger("Mediaceenter wird neu gestart", logging)
+                    ret = json.dumps({"Antwort":"Mediacenter","Wert":"Restart"})
             else:
                 logger("Des bassd net.", logging)
                 ret = json.dumps({"Antwort":"Schalter","Wert":"Kein gültiges Schalter-Kommando"})
