@@ -9,7 +9,6 @@ import RPi.GPIO as GPIO
 import smbus
 import syslog
 import socket
-import time
 import threading
 from threading import Thread
 import signal
@@ -42,13 +41,13 @@ class Hardware():
         import smbus
         self.bus = smbus.SMBus(1) # Rev 2 Pi
 
-        self.outPa = 16 #Relais für PA2200
-        self.outTv = 18 #Relais für TV und Sony-Verstärker
+        self.outPa = 18 #Relais für PA2200
+        self.outTv = 16 #Relais für TV und Sony-Verstärker
         self.Out_pwr_rel = 29 #Relais für Ampi-Ringkerntrafo
-        self.In_mcp_int = 37
-        self.In_vol_down = 7
-        self.In_vol_up = 36
-        self.In_mute = 15
+        self.inMcpInt = 37
+        self.inVolDir = 36
+        self.inVolClk  = 7
+        self.inVolMute = 15
         self.validSources = ['Aus', 'CD', 'Schneitzlberger', 'Portable', 'Hilfssherriff', 'Bladdnspiela', 'Himbeer314']
         self.source = "Aus"
         self.ampPwr = False
@@ -72,20 +71,20 @@ class Hardware():
         GPIO.setup(self.Out_pwr_rel, GPIO.OUT) # PWR_REL -> for control of amp power supply (vol_ctrl, riaa_amp)
         GPIO.output(self.Out_pwr_rel, GPIO.LOW) # Switch amp power supply off
 
-        GPIO.setup(self.In_mcp_int, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Interrupt input from MCP (GPIO26)
-        GPIO.setup(self.In_vol_down, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # vol_down key
-        GPIO.setup(self.In_mute, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # mute key
-        GPIO.setup(self.In_vol_up, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # vol_up key
+        GPIO.setup(self.inMcpInt, GPIO.IN, pull_up_down=GPIO.PUD_UP) # Interrupt input from MCP (GPIO26)
+        GPIO.setup(self.inVolMute, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # mute key
+        GPIO.setup(self.inVolClk, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # vol_up key
+        GPIO.setup(self.inVolDir, GPIO.IN, pull_up_down=GPIO.PUD_DOWN) # vol_up key
 
         #Set interrupts
-        GPIO.add_event_detect(self.In_mcp_int, GPIO.FALLING, callback = self.gpioInt)  # Set Interrupt for MCP (GPIO26)
-        GPIO.add_event_detect(self.In_mute, GPIO.RISING, callback = self.gpioInt, bouncetime = 250)  # Set Interrupt for mute key
-        GPIO.add_event_detect(self.In_vol_up, GPIO.RISING, callback = self.gpioInt)  # Set Interrupt for vol_up key
+        GPIO.add_event_detect(self.inMcpInt, GPIO.FALLING, callback = self.gpioInt)  # Set Interrupt for MCP (GPIO26)
+        GPIO.add_event_detect(self.inVolMute, GPIO.RISING, callback = self.gpioInt, bouncetime = 250)  # Set Interrupt for mute key
+        GPIO.add_event_detect(self.inVolClk, GPIO.RISING, callback = self.gpioInt)  # Set Interrupt for vol_up key
 
 
     def gpioInt(self, channel): #Interrupt Service Routine
         #This function is called, if an interrupt (GPIO) occurs; input parameter is the pin, where the interrupt occured; not needed here
-        if channel == 37: #Interrupt from MCP
+        if channel == self.inMcpInt: #Interrupt from MCP
             src = self.sources.getMcpInt()
             if src == "Nixtun":
                 return()
@@ -104,16 +103,16 @@ class Hardware():
                 logger("Switching hyperion to ", logging)
                 self.hyp.setScene()
                 return()
-        elif channel == 36: # Drehn am Rädle
-            if GPIO.input(7): # Rechtsrum drehn
-                logger("Lauter", logging)
-                self.volume.incVolumePot()
-            else: # Linksrum drehn
+        elif channel == self.inVolClk: # Drehn am Rädle
+            if GPIO.input(self.inVolDir): # Linksrum drehn
                 logger("Leiser", logging)
                 self.volume.decVolumePot()
+            else: # Linksrum drehn
+                logger("Lauter", logging)
+                self.volume.incVolumePot()
             time.sleep(0.1)
             return()
-        elif channel == 15: # mute key pressed
+        elif channel == self.inVolMute: # mute key pressed
             logger("Ton aus", logging)
             mute = self.volume.toggleMute()
             return()
@@ -162,7 +161,7 @@ class Hardware():
             if(val == True):
                 amp_stat = GPIO.input(self.Out_pwr_rel) # nachschauen, ob der Preamp nicht evtl. schon läuft
                 if amp_stat == False:
-                    self.sources.setMcpOut("Aus") # source Schneitzlberger, damit Preamp von Endstufe getrennt wird
+                    self.sources.setInput("Aus") # source Schneitzlberger, damit Preamp von Endstufe getrennt wird
                     GPIO.output(self.Out_pwr_rel, GPIO.HIGH) # Switch amp power supply on
                     logger("Ampi anmachen", logging)
                     time.sleep(1)
@@ -174,7 +173,7 @@ class Hardware():
                     #Der Preamp läuft wohl schon, also muss nur noch der Eingang gesetzt werden
                     logger("Ampi laaft scho!", logging)
             else:
-                self.sources.setMcpOut("Aus") # source Schneitzlberger, damit Preamp von Endstufe getrennt wird
+                self.sources.setInput("Aus") # source Schneitzlberger, damit Preamp von Endstufe getrennt wird
                 GPIO.output(self.Out_pwr_rel, GPIO.LOW) # Switch amp power supply off
                 logger("Ampi ausmachen", logging)
         except Exception as e:
@@ -199,6 +198,27 @@ class Hardware():
             #Hier geht's rein, wenn der source-Wert nicht gültig ist
             logger("Ampswitch else ... nothing happened.", logging)
         return()
+
+    def getAmpOut(self):
+        return self.sources.getAmpOut()
+
+    def getHeadOut(self):
+        return self.sources.getHeadOut()
+
+    def selectOutput(self, output):
+        if(output == "AmpOut"):
+            ret = self.sources.setAmpOut()
+            logger("Amp Output set remotely to " + str(ret), logging)
+        elif(output == "HeadOut"):
+            ret = self.sources.setHeadOut()
+            logger("Headphone Output set remotely to " + str(ret), logging)
+        else:
+            ret = -1
+            logger("Error: not a valid output", logging)
+        return ret
+
+
+
 
     def setKodiAudio(self, val):
         if(val == "analog"):
@@ -230,35 +250,37 @@ class Hardware():
             self.setTvPwr(True)
             self.setAmpPwr(True)
             self.ampiPwr(False)
-            self.sources.setMcpOut(src)
+            self.sources.setInput(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
+            time.sleep(0.2)
+            self.hyp.setScene("Kodi")
         elif src == "CD":
             self.setTvPwr(False)
             self.setAmpPwr(True)
             self.ampiPwr(True)
-            self.sources.setMcpOut(src)
+            self.sources.setInput(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Portable":
             self.setTvPwr(False)
             self.setAmpPwr(True)
             self.ampiPwr(True)
-            self.sources.setMcpOut(src)
+            self.sources.setInput(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Hilfssherriff":
             self.setTvPwr(False)
             self.setAmpPwr(True)
             self.ampiPwr(True)
-            self.sources.setMcpOut(src)
+            self.sources.setInput(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Bladdnspiela":
             self.setTvPwr(False)
             self.setAmpPwr(True)
             self.ampiPwr(True)
-            self.sources.setMcpOut(src)
+            self.sources.setInput(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Himbeer314":
@@ -266,7 +288,7 @@ class Hardware():
             self.setTvPwr(False)
             self.setAmpPwr(True)
             self.ampiPwr(True)
-            self.sources.setMcpOut(src)
+            self.sources.setInput(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
         elif src == "Aus":
@@ -274,7 +296,7 @@ class Hardware():
             time.sleep(0.2)
             self.oled.setMsgScreen(l1="Servusla.", l3="Alles aus etz!")
             self.setKodiNotification("Ampi-Eingang", src)
-            self.sources.setMcpOut("Schneitzlberger")
+            self.sources.setInput(src)
             time.sleep(0.1)
             self.ampiPwr(False)
             time.sleep(0.2)
@@ -282,7 +304,7 @@ class Hardware():
             time.sleep(0.5)
             self.setTvPwr(False)
             time.sleep(0.2)
-            self.hyp.setScene("Kodi")
+            self.hyp.setScene("Off")
             time.sleep(0.1)
         else:
             logger('Komischer Elisenzustand', logging)
@@ -310,6 +332,9 @@ class Ampi():
         time.sleep(1.1) #Short break to make sure the display is cleaned
 
         self.hw.setSource("Aus")  #Set initial source to Aus
+        self.mc_restart_cnt = 0
+        self.t_stop = threading.Event()
+        self.clearTimer()
 
         self.udpServer()
         self.tcpServer()
@@ -339,6 +364,16 @@ class Ampi():
         #so.close()
         logger("              So long sucker!", logging) #Fein auf Wiedersehen sagen
         sys.exit(0) #Und raus hier
+
+    def clearTimer(self):
+        ciT = threading.Thread(target=self._clearTimer)
+        ciT.setDaemon(True)
+        ciT.start()
+
+    def _clearTimer(self):
+        while(not self.t_stop.is_set()):
+            self.mc_restart_cnt = 0 # Clear mediacenter reboot counter
+            self.t_stop.wait(3)
 
     def tcpServer(self):
         sT = threading.Thread(target = self._tcpServer)
@@ -390,6 +425,11 @@ class Ampi():
             ret = {"Antwort":"bassd","Input":ret}
         return(json.dumps(ret))
 
+    def selectOutput(self, jcmd):
+        logger("Output: " + jcmd['Parameter'], logging)
+        ret = self.hw.selectOutput(jcmd['Parameter'])
+        return ret
+
     def ampiZustand(self):
         zustand  = json.dumps({"Antwort" : "Zustand",
                                "Input" : self.hw.getSource(),
@@ -397,7 +437,9 @@ class Ampi():
                                "Volume" : self.hw.volume.getVolume(),
                                "OledBlank" : self.hw.oled.getBlankScreen(),
                                "TV" : self.hw.getTvPwr(),
-                               "PA2200" : self.hw.getAmpPwr()
+                               "PA2200" : self.hw.getAmpPwr(),
+                               "Amp-Ausgang" : self.hw.getAmpOut(),
+                               "Headphone-Ausgang" : self.hw.getHeadOut()
                                })
         return(zustand)
 
@@ -410,6 +452,8 @@ class Ampi():
             ret = json.dumps({"Antwort": "Kaa JSON Dings!"})
         if(jcmd['Aktion'] == "Input"):
             ret = self.selectSource(jcmd)
+        elif(jcmd['Aktion'] == "Output"):
+            ret = self.selectOutput(jcmd)
         elif(jcmd['Aktion'] == "Hyperion"):
             logger("Remote hyperion control", logging)
             ret = json.dumps({"Antwort": "Hyperion", "Szene": self.hyp.setScene()})
@@ -433,6 +477,13 @@ class Ampi():
                 #self.hyp.setScene("Kodi")
                 logger("Aus is fuer heit!", logging)
                 ret = json.dumps({"Antwort":"Betrieb","Wert":"Aus"})
+            elif jcmd['Parameter'] == "Mediacenter":
+                self.mc_restart_cnt += 1
+                ret = json.dumps({"Antwort":"Mediacenter","Wert":"BaldRestart"})
+                if self.mc_restart_cnt >= 2:
+                    os.system('sudo systemctl restart mediacenter')
+                    logger("Mediaceenter wird neu gestart", logging)
+                    ret = json.dumps({"Antwort":"Mediacenter","Wert":"Restart"})
             else:
                 logger("Des bassd net.", logging)
                 ret = json.dumps({"Antwort":"Schalter","Wert":"Kein gültiges Schalter-Kommando"})

@@ -44,7 +44,7 @@ class Volume():
     def setVolumePot(self, value, display=True):
         if(value > self.minVol):
             return(-1)
-        elif(self.volPotVal <= 0):
+        elif(self.volPotVal < 0):
             return(-1)
         self.volIsolator(1) # Enable Volume I2C-Bus-Isolator
         try:
