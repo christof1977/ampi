@@ -334,7 +334,7 @@ class Ampi():
         self.hw.setSource("Aus")  #Set initial source to Aus
         self.mc_restart_cnt = 0
         self.t_stop = threading.Event()
-        self.timer()
+        self.clearTimer()
 
         self.udpServer()
         self.tcpServer()
