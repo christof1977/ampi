@@ -465,6 +465,9 @@ class Ampi():
                 #self.hyp.setScene("Kodi")
                 logger("Aus is fuer heit!", logging)
                 ret = json.dumps({"Antwort":"Betrieb","Wert":"Aus"})
+            elif jcmd['Parameter'] == "Mediacenter":
+                os.system('sudo systemctl restart mediacenter')
+                logger("Mediaceenter wird neu gestart", logging)
             else:
                 logger("Des bassd net.", logging)
                 ret = json.dumps({"Antwort":"Schalter","Wert":"Kein gültiges Schalter-Kommando"})
