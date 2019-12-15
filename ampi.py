@@ -43,6 +43,7 @@ class Hardware():
 
         self.outPa = 18 #Relais für PA2200
         self.outTv = 16 #Relais für TV und Sony-Verstärker
+        self.outPhono = 33 #Relais für Phono-Preamp Power
         self.Out_pwr_rel = 29 #Relais für Ampi-Ringkerntrafo
         self.inMcpInt = 37
         self.inVolDir = 36
@@ -68,6 +69,7 @@ class Hardware():
         GPIO.setmode(GPIO.BOARD) # Nutzung der Pin-Nummerierung, nicht GPIO-Nummegn
         GPIO.setup(self.outPa, GPIO.OUT) # EXT1 -> for control of external Relais etc.
         GPIO.setup(self.outTv, GPIO.OUT) # EXT2 -> for control of external Relais etc.
+        GPIO.setup(self.outPhono, GPIO.OUT) # Relais for Phono Preamp
         GPIO.setup(self.Out_pwr_rel, GPIO.OUT) # PWR_REL -> for control of amp power supply (vol_ctrl, riaa_amp)
         GPIO.output(self.Out_pwr_rel, GPIO.LOW) # Switch amp power supply off
 
@@ -199,6 +201,13 @@ class Hardware():
             logger("Ampswitch else ... nothing happened.", logging)
         return()
 
+    def phonoPwr(self, val):
+        if val == True:
+            GPIO.output(self.outPhono, GPIO.HIGH)
+        else:
+            GPIO.output(self.outPhono, GPIO.LOW)
+        return()
+
     def getAmpOut(self):
         return self.sources.getAmpOut()
 
@@ -250,6 +259,7 @@ class Hardware():
             self.setTvPwr(True)
             self.setAmpPwr(True)
             self.ampiPwr(False)
+            self.phonoPwr(False)
             self.sources.setInput(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
@@ -259,6 +269,7 @@ class Hardware():
             self.setTvPwr(False)
             self.setAmpPwr(True)
             self.ampiPwr(True)
+            self.phonoPwr(False)
             self.sources.setInput(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
@@ -266,6 +277,7 @@ class Hardware():
             self.setTvPwr(False)
             self.setAmpPwr(True)
             self.ampiPwr(True)
+            self.phonoPwr(False)
             self.sources.setInput(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
@@ -273,6 +285,7 @@ class Hardware():
             self.setTvPwr(False)
             self.setAmpPwr(True)
             self.ampiPwr(True)
+            self.phonoPwr(False)
             self.sources.setInput(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
@@ -280,6 +293,7 @@ class Hardware():
             self.setTvPwr(False)
             self.setAmpPwr(True)
             self.ampiPwr(True)
+            self.phonoPwr(True)
             self.sources.setInput(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
@@ -288,6 +302,7 @@ class Hardware():
             self.setTvPwr(False)
             self.setAmpPwr(True)
             self.ampiPwr(True)
+            self.phonoPwr(False)
             self.sources.setInput(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
@@ -299,6 +314,7 @@ class Hardware():
             self.sources.setInput(src)
             time.sleep(0.1)
             self.ampiPwr(False)
+            self.phonoPwr(False)
             time.sleep(0.2)
             self.setAmpPwr(False)
             time.sleep(0.5)
