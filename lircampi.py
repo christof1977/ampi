@@ -2,6 +2,7 @@
 #coding: utf8
 
 import lirc
+import time
 from libby import remoteAmpi
 import socket
 import signal
@@ -13,6 +14,7 @@ from systemd.journal import JournaldLogHandler
 log = logging.getLogger('LIRCAMPI')
 log.addHandler(JournaldLogHandler())
 log.setLevel(logging.INFO)
+#log.setLevel(logging.DEBUG)
 
 
 
@@ -36,7 +38,7 @@ def main():
     log.info("Starting amplifier lirc remote control service")
 
     signal.signal(signal.SIGTERM, signal_term_handler)
-    addr = 'osmd.fritz.box'
+    addr = 'osmd.local'
     port = 5005
     sockid = lirc.init("lircsock")
     allow = lirc.set_blocking(False, sockid)
@@ -49,6 +51,7 @@ def main():
                 remoteAmpi.udpRemote(json_cmd, addr=addr, port=port)
                 log.info("Sending command %s", json_cmd)
                 codeIR_list = []
+            time.sleep(0.01)
         except KeyboardInterrupt:
             signal_term_handler(99)
             break
