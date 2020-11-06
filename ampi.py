@@ -30,7 +30,7 @@ logging = True
 
 reboot_count = 0
 
-eth_addr='osmd.fritz.box'
+eth_addr='osmd.local'
 udp_port=5005 #An diesen Port wird der UDP-Server gebunden
 tcp_port=5015
 
