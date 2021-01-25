@@ -6,6 +6,7 @@ from lcdproc.server import Server
 from libby.logger import logger
 import threading
 import time
+import sys
 
 logging = True
 
@@ -18,22 +19,11 @@ class AmpiOled:
         self.timeoutMsgScreen = 0
         self.visibletime = 3
         self.blank = False
-        self.lcd = Server("127.0.0.1", debug=False)
-        self.lcd.start_session()
-        self.screenVol = self.lcd.add_screen("Screen_vol")
-        self.screenVol.set_heartbeat("off")
-        self.screenVol.set_priority("background")
-
-        self.screenMsg = self.lcd.add_screen("Screen_msg")
-        self.screenMsg.set_heartbeat("off")
-        self.screenMsg.set_priority("background")
-
-        self.screenClear = self.lcd.add_screen("Screen_clear")
-        self.screenClear.set_heartbeat("off")
-        self.screenClear.set_priority("background")
 
 
         self.tStop = threading.Event()
+
+        self.init_oled()
 
         self.initVolScreen()
         self.initMsgScreen()
@@ -49,6 +39,54 @@ class AmpiOled:
 
     def __del__(self):
         self.tStop.set() #Threads ordnungsgemäss beenden
+
+
+    def init_oled(self):
+        self.oled_reset = 13
+        self.reset_oled()
+        import dbus
+        service = "LCDd.service"
+        bus = dbus.SystemBus()
+        systemd = bus.get_object('org.freedesktop.systemd1', '/org/freedesktop/systemd1')
+        manager = dbus.Interface(systemd, 'org.freedesktop.systemd1.Manager')
+        manager.RestartUnit(service, 'replace')
+
+        run = False
+        while run != True:
+            try:
+                self.lcd = Server("127.0.0.1", debug=False)
+                self.lcd.start_session()
+                run = True
+            except:
+                logger("Waiting for LDCd ...",logging)
+                time.sleep(.1)
+                run = False
+
+
+        self.screenVol = self.lcd.add_screen("Screen_vol")
+        self.screenVol.set_heartbeat("off")
+        self.screenVol.set_priority("background")
+
+        self.screenMsg = self.lcd.add_screen("Screen_msg")
+        self.screenMsg.set_heartbeat("off")
+        self.screenMsg.set_priority("background")
+
+        self.screenClear = self.lcd.add_screen("Screen_clear")
+        self.screenClear.set_heartbeat("off")
+        self.screenClear.set_priority("background")
+
+    def reset_oled(self):
+        try:
+            GPIO
+        except NameError:
+            import RPi.GPIO as GPIO
+            GPIO.setwarnings(False)
+            GPIO.setmode(GPIO.BOARD) # Nutzung der Pin-Nummerierung, nicht GPIO-Nummegn
+        GPIO.setup(self.oled_reset, GPIO.OUT) # EXT1 -> for control of external Relais etc.
+        GPIO.output(self.oled_reset, GPIO.LOW) # Drive oled reset pin low
+        time.sleep(.5)
+        GPIO.output(self.oled_reset, GPIO.HIGH) # Drive oled reset pin high again
+
 
     def clearScreen(self, dummy, stop_event):
         while(not stop_event.is_set()):
