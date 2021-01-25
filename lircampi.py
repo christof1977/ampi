@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 #coding: utf8
 
 import lirc
@@ -9,10 +9,10 @@ import signal
 import sys
 import json
 import logging
-from systemd.journal import JournaldLogHandler
+from systemd.journal import JournalHandler
 
 log = logging.getLogger('LIRCAMPI')
-log.addHandler(JournaldLogHandler())
+log.addHandler(JournalHandler())
 log.setLevel(logging.INFO)
 #log.setLevel(logging.DEBUG)
 
