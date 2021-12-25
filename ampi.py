@@ -30,7 +30,8 @@ logging = True
 
 reboot_count = 0
 
-eth_addr='osmd.local'
+kodi_addr='osmd'
+eth_addr=''
 udp_port=5005 #An diesen Port wird der UDP-Server gebunden
 tcp_port=5015
 
@@ -231,11 +232,13 @@ class Hardware():
 
     def setKodiAudio(self, val):
         if(val == "analog"):
-            device = "ALSA:@"
+            #device = "ALSA:@"
+            device = "ALSA:sysdefault:CARD=sndrpihifiberry"
         else:
-            device = "PI:HDMI"
+            #device = "PI:HDMI"
+            device = "ALSA:sysdefault:CARD=vc4hdmi"
         try:
-            kodi = Kodi("http://"+eth_addr+"/jsonrpc")
+            kodi = Kodi("http://"+kodi_addr+"/jsonrpc")
             kodi.Settings.SetSettingValue({"setting":"audiooutput.audiodevice","value":device})
             kodi.GUI.ShowNotification({"title":"Tonausgang is etz:", "message":val})
             logger("Kodi laaft etz auf " + device, logging)
@@ -244,7 +247,7 @@ class Hardware():
 
     def setKodiNotification(self, title, msg):
         try:
-            kodi = Kodi("http://"+eth_addr+"/jsonrpc")
+            kodi = Kodi("http://"+kodi_addr+"/jsonrpc")
             kodi.GUI.ShowNotification({"title":title, "message":msg})
         except Exception as e:
             logger("Beim der Kodianzeigerei is wos passiert: " + str(e), logging)
@@ -421,6 +424,7 @@ class Ampi():
             try:
                 data, addr = self.udpSock.recvfrom( 1024 )# Puffer-Groesse ist 1024 Bytes.
                 ret = self.parseCmd(data) # Abfrage der Fernbedienung (UDP-Server), der Rest passiert per Interrupt/Event
+                logger(ret, logging)
                 self.udpSock.sendto(str(ret).encode('utf-8'), addr)
             except Exception as e:
                 logger("Uiui, beim UDP senden/empfangen hat's kracht!" + str(e))
@@ -428,7 +432,7 @@ class Ampi():
 
     def stopKodiPlayer(self):
         try:
-            kodi = Kodi("http://"+eth_addr+"/jsonrpc")
+            kodi = Kodi("http://"+kodi_addr+"/jsonrpc")
             playerid = kodi.Player.GetActivePlayers()["result"][0]["playerid"]
             result = kodi.Player.Stop({"playerid": playerid})
             logger("Kodi aus!", logging)
