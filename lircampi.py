@@ -38,7 +38,7 @@ def main():
     log.info("Starting amplifier lirc remote control service")
 
     signal.signal(signal.SIGTERM, signal_term_handler)
-    addr = 'osmd.local'
+    addr = 'osmd'
     port = 5005
     sockid = lirc.init("lircsock")
     allow = lirc.set_blocking(False, sockid)
