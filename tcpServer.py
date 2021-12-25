@@ -33,7 +33,7 @@ class app():
 
     def _tcpServerThread(self):
         # instantiate the server, and bind to localhost on port 9999
-        HOST,PORT = "osmd.fritz.box", 9999
+        HOST,PORT = "osmd", 9999
         # activate the server
         server = socketserver.TCPServer((HOST, PORT), MyTCPSocketHandler)
         # this will keep running until Ctrl-C
