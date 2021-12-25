@@ -13,7 +13,7 @@ import RPi.GPIO as GPIO
 logging = True
 
 run_path =  os.path.dirname(os.path.abspath(__file__))
-eth_addr = 'osmd.fritz.box'
+eth_addr = 'osmd'
 
 class Hypctrl():
     def __init__(self, oled=None):
@@ -102,7 +102,10 @@ class Hypctrl():
             msg = "Farbe: " + self.cList[self.color]
             GPIO.output(self.Out_ext0, GPIO.LOW)
             self.setAlPower(True)
-        hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
+        try:
+            hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
+        except:
+            logger("hyperion-remote ist kapuut!")
         if(self.oled is not None):
             self.oled.setMsgScreen(l1="Es werde Licht:", l3=self.cList[self.color])
         self.setKodiNotification("Es werde Licht", self.cList[self.color])
