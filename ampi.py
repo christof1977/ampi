@@ -345,6 +345,7 @@ class Ampi():
         logger("Starting amplifier control service", logging)
 
         self.validVolCmd = ['Up', 'Down', 'Mute']
+        self.toggleinputs = ['Himbeer314', 'CD', 'Bladdnspiela' , 'Portable', 'Hilfssherriff']
         self.oled = AmpiOled()
         self.hyp = Hypctrl(self.oled)
         #Starte handler für SIGTERM (kill -15), also normales beenden
@@ -509,6 +510,17 @@ class Ampi():
                     os.system('sudo systemctl restart mediacenter')
                     logger("Mediaceenter wird neu gestart", logging)
                     ret = json.dumps({"Antwort":"Mediacenter","Wert":"Restart"})
+            elif jcmd['Parameter'] == "Input":
+                src = self.hw.getSource()
+                try:
+                    idx = self.toggleinputs.index(src)
+                    idx += 1
+                    if(idx >= len(self.toggleinputs)):
+                        idx = 0
+                except ValueError:
+                    idx = 0
+                self.hw.setSource(self.toggleinputs[idx])
+                ret = json.dumps({"Antwort":"Input","Wert":self.toggleinputs[idx]})
             else:
                 logger("Des bassd net.", logging)
                 ret = json.dumps({"Antwort":"Schalter","Wert":"Kein gültiges Schalter-Kommando"})

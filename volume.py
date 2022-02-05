@@ -56,8 +56,8 @@ class Volume():
             logger("Mach mal auf -"+ str(self.volPotVal) +"dB")
             ret = self.volPotVal
         except:
-            logger("Kann ich etz so net machn. Is der Ampi aus?", logging)
-            self.oled.setVolScreen(99)
+            #logger("Kann ich etz so net machn. Is der Ampi aus?", logging)
+            #self.oled.setVolScreen(99)
             ret = -1
         self.volIsolator(0) # Disable Volume I2C-Bus-Isolator
         return(ret)
