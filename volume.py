@@ -2,7 +2,6 @@
 
 import RPi.GPIO as GPIO
 import logging
-import logging.handlers
 
 # create logger
 logger = logging.getLogger(__name__)
