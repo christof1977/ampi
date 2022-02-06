@@ -115,7 +115,7 @@ class Hardware():
             GPIO.output(self.outPa, GPIO.HIGH)
         else:
             GPIO.output(self.outPa, GPIO.LOW)
-        logger.debug("PA2200: {}".fomrat(self.ampPwr))
+        logger.debug("PA2200: {}".format(self.ampPwr))
         return(self.ampPwr)
 
     def getAmpPwr(self):
@@ -226,7 +226,7 @@ class Hardware():
             kodi = Kodi("http://localhost/jsonrpc")
             kodi.GUI.ShowNotification({"title":title, "message":msg})
         except Exception as e:
-            logger.warning("Beim der Kodianzeigerei is wos passiert: {}".fomrat(str(e)))
+            logger.warning("Beim der Kodianzeigerei is wos passiert: {}".format(str(e)))
 
     def setSource(self, src):
         if src == "00000000":
