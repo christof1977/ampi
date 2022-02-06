@@ -34,6 +34,7 @@ tcp_port=5015
 # create logger
 if(__name__ == "__main__"):
     logging.basicConfig(level=logging.INFO)
+    #logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger()
     handler = logging.handlers.SysLogHandler(address = '/dev/log')
     formatter = logging.Formatter('Ampi: %(module)s: %(levelname)s: %(message)s')
