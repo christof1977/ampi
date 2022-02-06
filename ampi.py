@@ -32,12 +32,15 @@ udp_port=5005 #An diesen Port wird der UDP-Server gebunden
 tcp_port=5015
 
 # create logger
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger("AMPI")
-handler = logging.handlers.SysLogHandler(address = '/dev/log')
-formatter = logging.Formatter('%(name)s: %(levelname)s: %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+if(__name__ == "__main__"):
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger()
+    handler = logging.handlers.SysLogHandler(address = '/dev/log')
+    formatter = logging.Formatter('Ampi: %(module)s: %(levelname)s: %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+else:
+    logger = logging.getLogger(__name__)
 
 class Ampi():
     def __init__(self):

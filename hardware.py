@@ -2,17 +2,18 @@
 # -*- coding: utf-8 -*-
 
 import time
-from libby.logger import logger
 from volume import Volume
 from mcpctrl import Sources
 from kodijson import Kodi
 import RPi.GPIO as GPIO
+import logging
 
-logging = True
+# create logger
+logger = logging.getLogger(__name__)
 
 class Hardware():
     def __init__(self, oled, hyp):
-        logger("init class hardware",logging)
+        logger.info("Initializing hardware")
         import RPi.GPIO as GPIO
         import smbus
         self.bus = smbus.SMBus(1) # Rev 2 Pi
@@ -40,12 +41,12 @@ class Hardware():
 
     def stop(self):
         GPIO.cleanup()   #GPIOs aufräumen
-        logger("GPIOs aufräumen", logging)
+        logger.info("iCleanup GPIOs")
         pass
 
     def initGpios(self):
         #set up GPIOs
-        logger("init GPIOs", logging)
+        logger.info("init GPIOs")
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BOARD) # Nutzung der Pin-Nummerierung, nicht GPIO-Nummegn
         GPIO.setup(self.outPa, GPIO.OUT) # EXT1 -> for control of external Relais etc.
@@ -71,35 +72,35 @@ class Hardware():
             if src == "Nixtun":
                 return()
             elif src == "Error":
-                logger("An error occured", logging)
+                logger.warning("An error occured")
                 return()
             elif src == "DimOled":
                 self.oled.toggleBlankScreen()
-                logger("Dim switch toggled", logging)
+                logger.debug("Dim switch toggled")
                 return()
             elif src in self.validSources:
-                logger("Switching input to " + src, logging)
+                logger.debug("Switching input to {}".format(src))
                 self.setSource(src)
                 return()
             elif src == "Hyperion":
-                logger("Switching hyperion to ", logging)
+                logger.debug("Switching hyperion to ")
                 self.hyp.setScene()
                 return()
         elif channel == self.inVolClk: # Drehn am Rädle
             if GPIO.input(self.inVolDir): # Linksrum drehn
-                logger("Leiser", logging)
+                logger.debug("Leiser")
                 self.volume.decVolumePot()
             else: # Linksrum drehn
-                logger("Lauter", logging)
+                logger.debug("Lauter")
                 self.volume.incVolumePot()
             time.sleep(0.1)
             return()
         elif channel == self.inVolMute: # mute key pressed
-            logger("Ton aus", logging)
+            logger.debug("Ton aus")
             mute = self.volume.toggleMute()
             return()
         else:
-            logger("An error orccured during GpioInt("+str(channel)+")", logging)
+            logger.warning("An error orccured during GpioInt({})".format(str(channel)))
             return()
 
     def setAmpPwr(self, *args):
@@ -109,12 +110,12 @@ class Hardware():
         elif(len(args) == 1 and type(args[0]) is bool):
             self.ampPwr = args[0]
         else:
-            logger("ampPwr: Fehler")
+            logger.warning("ampPwr: Fehler")
         if(self.ampPwr):
             GPIO.output(self.outPa, GPIO.HIGH)
         else:
             GPIO.output(self.outPa, GPIO.LOW)
-        logger("PA2200: " + str(self.ampPwr))
+        logger.debug("PA2200: {}".fomrat(self.ampPwr))
         return(self.ampPwr)
 
     def getAmpPwr(self):
@@ -127,12 +128,12 @@ class Hardware():
         elif(len(args) == 1 and type(args[0]) is bool):
             self.tvPwr = args[0]
         else:
-            logger("tvPwr: Fehler")
+            logger.warning("tvPwr: Fehler")
         if(self.tvPwr):
             GPIO.output(self.outTv, GPIO.HIGH)
         else:
             GPIO.output(self.outTv, GPIO.LOW)
-        logger("TV: "+str(self.tvPwr))
+        logger.debug("TV: {}".format(self.tvPwr))
         return(self.tvPwr)
 
     def getTvPwr(self):
@@ -145,7 +146,7 @@ class Hardware():
                 if amp_stat == False:
                     self.sources.setInput("Aus") # source Schneitzlberger, damit Preamp von Endstufe getrennt wird
                     GPIO.output(self.Out_pwr_rel, GPIO.HIGH) # Switch amp power supply on
-                    logger("Ampi anmachen", logging)
+                    logger.debug("Ampi anmachen")
                     time.sleep(1)
                     self.volume.setPotWiper()
                     time.sleep(1)
@@ -153,14 +154,13 @@ class Hardware():
                     self.volume.setVolumePot(vol, display=False) #Aktuellen Lautstärke setzen
                 else:
                     #Der Preamp läuft wohl schon, also muss nur noch der Eingang gesetzt werden
-                    logger("Ampi laaft scho!", logging)
+                    logger.debug("Ampi laaft scho!")
             else:
                 self.sources.setInput("Aus") # source Schneitzlberger, damit Preamp von Endstufe getrennt wird
                 GPIO.output(self.Out_pwr_rel, GPIO.LOW) # Switch amp power supply off
-                logger("Ampi ausmachen", logging)
+                logger.debug("Ampi ausmachen")
         except Exception as e:
-            logger("Da hat beim Ampi schalten wos ned bassd")
-            logger(str(e))
+            logger.warning("Da hat beim Ampi schalten wos ned bassd: {}".format(str(e)))
 
     def ampPower(self, inp):
         if inp == "off" or inp == "Schneitzlberger":
@@ -168,7 +168,7 @@ class Hardware():
             if inp == "off":
                 reboot_count = reboot_count + 1
                 if reboot_count > 5:
-                     logger("Rebooting Pi!", logging)
+                     logger.warning("Rebooting Pi!")
                      subprocess.Popen("reboot")
         elif inp in valid_sources:
             #Hier geht's rein, wenn nicht mit "off" oder "Schneitzlberger" aufgerufen wurde
@@ -178,7 +178,7 @@ class Hardware():
             # sowie die letzte Lautstärke gesetzt und schlussendlich der entsprechende Eingang
             # ausgewählt.
             #Hier geht's rein, wenn der source-Wert nicht gültig ist
-            logger("Ampswitch else ... nothing happened.", logging)
+            logger.debug("Ampswitch else ... nothing happened.")
         return()
 
     def phonoPwr(self, val):
@@ -197,13 +197,13 @@ class Hardware():
     def selectOutput(self, output):
         if(output == "AmpOut"):
             ret = self.sources.setAmpOut()
-            logger("Amp Output set remotely to " + str(ret), logging)
+            logger.debug("Amp Output set remotely to {}".format(str(ret)))
         elif(output == "HeadOut"):
             ret = self.sources.setHeadOut()
-            logger("Headphone Output set remotely to " + str(ret), logging)
+            logger.debug("Headphone Output set remotely to {}".format(str(ret)))
         else:
             ret = -1
-            logger("Error: not a valid output", logging)
+            logger.debug("Error: not a valid output")
         return ret
 
     def setKodiAudio(self, val):
@@ -217,22 +217,22 @@ class Hardware():
             kodi = Kodi("http://localhost/jsonrpc")
             kodi.Settings.SetSettingValue({"setting":"audiooutput.audiodevice","value":device})
             kodi.GUI.ShowNotification({"title":"Tonausgang is etz:", "message":val})
-            logger("Kodi laaft etz auf " + device, logging)
+            logger.debug("Kodi laaft etz auf {}".format(device))
         except Exception as e:
-            logger("Beim Kodiausgang umschalten is wos passiert: " + str(e), logging)
+            logger.warning("Beim Kodiausgang umschalten is wos passiert: {}".format(str(e)))
 
     def setKodiNotification(self, title, msg):
         try:
             kodi = Kodi("http://localhost/jsonrpc")
             kodi.GUI.ShowNotification({"title":title, "message":msg})
         except Exception as e:
-            logger("Beim der Kodianzeigerei is wos passiert: " + str(e), logging)
+            logger.warning("Beim der Kodianzeigerei is wos passiert: {}".fomrat(str(e)))
 
     def setSource(self, src):
         if src == "00000000":
             return()
         elif src == self.source:
-            logger("Da ist nix neues dabei, ich mach mal nix", logging)
+            logger.debug("Da ist nix neues dabei, ich mach mal nix")
         elif src == "Schneitzlberger":
             self.setKodiAudio("digital")
             self.setTvPwr(True)
@@ -307,7 +307,7 @@ class Hardware():
             self.hyp.setScene("Off")
             time.sleep(0.1)
         else:
-            logger('Komischer Elisenzustand', logging)
+            logger.idebug('Komischer Elisenzustand')
         self.source = src
         return()
 

@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 
 import RPi.GPIO as GPIO
-from libby.logger import logger
-logging = True
+import logging
+import logging.handlers
+
+# create logger
+logger = logging.getLogger(__name__)
 
 class Volume():
     def __init__(self, oled, bus):
-        logger("Starte mal die Volumenklasse")
+        logger.info("Starte mal die Volumenklasse")
         self.poti_device = 0x2f  #I2C-Adresse DS1882
         self.Out_i2c_iso = 32
         self.minVol = 63  #63 für 63 Wiper Positionen, 33 für 33 Wiper Positionen
@@ -25,10 +28,10 @@ class Volume():
         self.volIsolator(1) # Enable Volume I2C-Bus-Isolator
         if self.minVol == 33:
             self.bus.write_byte(self.poti_device, 0x87) #DS1882 auf 33 Wiper Positionen konfigurieren
-            logger("33 wiper", logging)
+            logger.info("33 wiper")
         else:
             self.bus.write_byte(self.poti_device,0x86) #DS1882 auf 63 Wiper Positionen konfigurieren
-            logger("63 wiper", logging)
+            logger.info("63 wiper")
         self.volIsolator(0) # Disable Volume I2C-Bus-Isolator
 
 
@@ -53,11 +56,9 @@ class Volume():
             self.bus.write_byte(self.poti_device,self.volPotVal+64)
             if(display):
                 self.oled.setVolScreen(self.volPotVal)
-            logger("Mach mal auf -"+ str(self.volPotVal) +"dB")
+            logger.info("Mach mal auf -{}dB".format(self.volPotVal))
             ret = self.volPotVal
         except:
-            #logger("Kann ich etz so net machn. Is der Ampi aus?", logging)
-            #self.oled.setVolScreen(99)
             ret = -1
         self.volIsolator(0) # Disable Volume I2C-Bus-Isolator
         return(ret)
@@ -87,11 +88,11 @@ class Volume():
             self.volBeforeMute = self.volPotVal
             self.volPotVal = self.minVol
             self.mute = True
-            logger("Stumm", logging)
+            logger.info("Stumm")
         else:
             self.volPotVal = self.volBeforeMute
             self.mute = False
-            logger("Nicht mehr stumm", logging)
+            logger.info("Nicht mehr stumm")
         return(self.setVolumePot(self.volPotVal))
 
     def getVolumePot(self):

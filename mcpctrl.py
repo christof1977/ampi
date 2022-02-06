@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
-from libby.logger import logger
 import threading
+import logging
 
-logging = True
+# create logger
+logger = logging.getLogger(__name__)
 
 class Sources():
     def __init__(self, oled, bus):
-        logger("Sourcenklasse laaft an", logging)
+        logger.info("Starte Sourcenklasse")
         self.oled = oled
         self.bus = bus
 
@@ -58,10 +59,10 @@ class Sources():
         # Amp-Bit: 0x40
         mcpState = self.getMcpOut()
         if mcpState & self.amp:
-            #logger("Amp-Ausgang aktiv")
+            logger.debug("Amp-Ausgang aktiv")
             self.ampState = True
         else:
-            #logger("Amp-Ausgang inaktiv")
+            logger.debug("Amp-Ausgang inaktiv")
             self.ampState = False
         return self.ampState
 
@@ -97,7 +98,7 @@ class Sources():
 
     def setMcpOut(self, val):
         self.bus.write_byte_data(self.mcp_device, self.mcp_olatb, val)
-        #logger("Setz den MCP auf: "+str(self.mcpOutputs[val]),logging)
+        logger.debug("Setz den MCP auf: {}".format(self.mcpOutputs[val]))
 
     def getMcpOut(self):
         olatte = self.bus.read_byte_data(self.mcp_device, self.mcp_olatb)

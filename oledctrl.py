@@ -3,13 +3,13 @@
 
 
 from lcdproc.server import Server
-from libby.logger import logger
 import threading
 import time
 import sys
+import logging
 
-logging = True
-
+# create logger
+logger = logging.getLogger(__name__)
 
 class AmpiOled:
     def __init__(self):
@@ -35,7 +35,7 @@ class AmpiOled:
         self.clearScreenT.setDaemon(True)
         self.clearScreenT.start()
 
-        logger("Leaving set_lcd",logging)
+        logger.debug("Leaving set_lcd")
 
     def __del__(self):
         self.tStop.set() #Threads ordnungsgemäss beenden
@@ -58,7 +58,7 @@ class AmpiOled:
                 self.lcd.start_session()
                 run = True
             except:
-                logger("Waiting for LDCd ...",logging)
+                logger.info("Waiting for LDCd ...")
                 time.sleep(.1)
                 run = False
 
