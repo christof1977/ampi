@@ -14,12 +14,17 @@ prog = lircsock
 config = Input_Himbeer314
 end
 begin
-button = KEY_F6
+button = KEY_POWER
 prog = lircsock
 config = Switch_Mediacenter
 end
 begin
 button = KEY_F2
+prog = lircsock
+config = Input_Schneitzlberger
+end
+begin
+button = KEY_RED
 prog = lircsock
 config = Input_Schneitzlberger
 end
