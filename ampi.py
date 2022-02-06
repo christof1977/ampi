@@ -75,8 +75,8 @@ class Ampi():
         logger("Closing UDP Socket", logging)
         self.udpSock.close() #UDP-Server abschiessen
         self.hw.setSource("Aus") #Preamp schlafen legen
+        self.hw.stop()
 
-        GPIO.cleanup()   #GPIOs aufräumen
         logger("              So long sucker!", logging) #Fein auf Wiedersehen sagen
         sys.exit(0) #Und raus hier
 

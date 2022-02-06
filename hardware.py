@@ -36,6 +36,11 @@ class Hardware():
         self.sources = Sources(self.oled, self.bus) #Quellen-Objekt erzeugen
 
     def __del__(self):
+        self.stop()
+
+    def stop(self):
+        GPIO.cleanup()   #GPIOs aufräumen
+        logger("GPIOs aufräumen", logging)
         pass
 
     def initGpios(self):
@@ -58,7 +63,6 @@ class Hardware():
         GPIO.add_event_detect(self.inMcpInt, GPIO.FALLING, callback = self.gpioInt)  # Set Interrupt for MCP (GPIO26)
         GPIO.add_event_detect(self.inVolMute, GPIO.RISING, callback = self.gpioInt, bouncetime = 250)  # Set Interrupt for mute key
         GPIO.add_event_detect(self.inVolClk, GPIO.RISING, callback = self.gpioInt)  # Set Interrupt for vol_up key
-
 
     def gpioInt(self, channel): #Interrupt Service Routine
         #This function is called, if an interrupt (GPIO) occurs; input parameter is the pin, where the interrupt occured; not needed here
@@ -227,6 +231,8 @@ class Hardware():
     def setSource(self, src):
         if src == "00000000":
             return()
+        elif src == self.source:
+            logger("Da ist nix neues dabei, ich mach mal nix", logging)
         elif src == "Schneitzlberger":
             self.setKodiAudio("digital")
             self.setTvPwr(True)
