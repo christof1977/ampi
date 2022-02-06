@@ -29,7 +29,6 @@ class Sources():
 
         # Initial clear of MCP-Interrupt
         self.bus.read_byte_data(self.mcp_device, self.mcp_gpioa)
-        #self.mcpOutputs = {"Aus":0x00,"Schneitzlberger":0x00, "CD":0x28, "Portable":0x24,"Hilfssherriff":0x22,"Bladdnspiela":0x21,"Himbeer314":0x30}
         self.mcpOutputs = {"Aus":0x00,"Schneitzlberger":0x01, "CD":0x20, "Portable":0x08,"Hilfssherriff":0x10,"Bladdnspiela":0x04,"Himbeer314":0x02}
 
         # Definiere GPA als Input
@@ -97,8 +96,8 @@ class Sources():
             self.setAmpOut(True)
 
     def setMcpOut(self, val):
+        logger.debug("Set MCP-Output to {}".format(val))
         self.bus.write_byte_data(self.mcp_device, self.mcp_olatb, val)
-        logger.debug("Setz den MCP auf: {}".format(self.mcpOutputs[val]))
 
     def getMcpOut(self):
         olatte = self.bus.read_byte_data(self.mcp_device, self.mcp_olatb)
