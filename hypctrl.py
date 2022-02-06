@@ -4,16 +4,14 @@ import time
 import os
 import subprocess
 from subprocess import DEVNULL
-from libby.logger import logger
-
 from kodijson import Kodi
 import RPi.GPIO as GPIO
+import logging
 
-
-logging = True
+# create logger
+logger = logging.getLogger(__name__)
 
 run_path =  os.path.dirname(os.path.abspath(__file__))
-eth_addr = 'osmd'
 
 class Hypctrl():
     def __init__(self, oled=None):
@@ -32,10 +30,10 @@ class Hypctrl():
 
     def setKodiNotification(self, title, msg):
         try:
-            kodi = Kodi("http://"+eth_addr+"/jsonrpc")
+            kodi = Kodi("http://localhost/jsonrpc")
             kodi.GUI.ShowNotification({"title":title, "message":msg})
         except Exception as e:
-            logger("Beim der Kodianzeigerei is wos passiert: " + str(e), logging)
+            logger.warning("Beim der Kodianzeigerei is wos passiert: {}".format(str(e)))
 
     def setAlPower(self, val=False):
         if(val):
@@ -63,7 +61,7 @@ class Hypctrl():
                 self.color = 0
             else:
                 self.color += 1
-        logger("Scene: " + self.cList[self.color])
+        logger.info("Setting light scene: {}".format(self.cList[self.color]))
         cmd = '/usr/bin/hyperion-remote'
         if self.color == 0:
             args = ['-c', 'black']
@@ -105,7 +103,7 @@ class Hypctrl():
         try:
             hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
         except:
-            logger("hyperion-remote ist kapuut!")
+            logger.warning("hyperion-remote ist kaputt!")
         if(self.oled is not None):
             self.oled.setMsgScreen(l1="Es werde Licht:", l3=self.cList[self.color])
         self.setKodiNotification("Es werde Licht", self.cList[self.color])
