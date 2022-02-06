@@ -6,7 +6,6 @@ import sys
 import time
 import datetime
 import smbus
-import syslog
 import socket
 import threading
 from threading import Thread
@@ -16,7 +15,8 @@ import struct
 import math
 import select
 import json
-from libby.logger import logger
+import logging
+import logging.handlers
 from kodijson import Kodi
 from oledctrl import AmpiOled
 from hardware import Hardware
@@ -24,7 +24,6 @@ from hypctrl import Hypctrl
 from tcpServer import MyTCPSocketHandler
 import socketserver
 
-logging = True
 
 reboot_count = 0
 
@@ -32,12 +31,18 @@ eth_addr=''
 udp_port=5005 #An diesen Port wird der UDP-Server gebunden
 tcp_port=5015
 
-
+# create logger
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger("AMPI")
+handler = logging.handlers.SysLogHandler(address = '/dev/log')
+formatter = logging.Formatter('%(name)s: %(levelname)s: %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 class Ampi():
     def __init__(self):
 
-        logger("Starting amplifier control service", logging)
+        logger.info("Starting amplifier control service")
 
         self.validVolCmd = ['Up', 'Down', 'Mute']
         self.toggleinputs = ['Himbeer314', 'CD', 'Bladdnspiela' , 'Portable', 'Hilfssherriff']
@@ -64,20 +69,20 @@ class Ampi():
 
 
 
-        logger("Amplifier control service running", logging)
+        logger.info("Amplifier control service running")
 
 
     def __del__(self):
         pass
 
     def signal_term_handler(self, signal, frame):
-        logger("Got " + str(signal), logging)
-        logger("Closing UDP Socket", logging)
+        logger.info("Got " + str(signal))
+        logger.info("Closing UDP Socket")
         self.udpSock.close() #UDP-Server abschiessen
         self.hw.setSource("Aus") #Preamp schlafen legen
         self.hw.stop()
 
-        logger("              So long sucker!", logging) #Fein auf Wiedersehen sagen
+        logger.info("So long sucker!") #Fein auf Wiedersehen sagen
         sys.exit(0) #Und raus hier
 
     def clearTimer(self):
@@ -101,7 +106,7 @@ class Ampi():
 
 
     def udpServer(self):
-        logger("Starting UDP-Server at " + eth_addr + ":" + str(udp_port),logging)
+        logger.info("Starting UDP-Server at {}:{}".format(eth_addr, udp_port))
         self.udpSock = socket.socket( socket.AF_INET,  socket.SOCK_DGRAM )
         self.udpSock.bind( (eth_addr,udp_port) )
 
@@ -115,10 +120,10 @@ class Ampi():
             try:
                 data, addr = self.udpSock.recvfrom( 1024 )# Puffer-Groesse ist 1024 Bytes.
                 ret = self.parseCmd(data) # Abfrage der Fernbedienung (UDP-Server), der Rest passiert per Interrupt/Event
-                logger(ret, logging)
+                logger.info(ret)
                 self.udpSock.sendto(str(ret).encode('utf-8'), addr)
             except Exception as e:
-                logger("Uiui, beim UDP senden/empfangen hat's kracht!" + str(e))
+                logger.warning("Uiui, beim UDP senden/empfangen hat's kracht: {}".format(str(e)))
 
 
     def stopKodiPlayer(self):
@@ -126,13 +131,13 @@ class Ampi():
             kodi = Kodi("http://localhost/jsonrpc")
             playerid = kodi.Player.GetActivePlayers()["result"][0]["playerid"]
             result = kodi.Player.Stop({"playerid": playerid})
-            logger("Kodi aus!", logging)
+            logger.info("Kodi aus!")
         except Exception as e:
-            logger("Beim Kodi stoppen is wos passiert: " + str(e), logging)
+            logger.warning("Beim Kodi stoppen is wos passiert: {}".format(str(e)))
 
     def selectSource(self, jcmd):
-        logger("Input: " + jcmd['Parameter'], logging)
-        logger("Source set remotely to " + jcmd['Parameter'], logging)
+        logger.info("Input: {}".format(jcmd['Parameter']))
+        logger.info("Source set remotely to {}".format(jcmd['Parameter']))
         self.hw.setSource(jcmd['Parameter'])
         ret = self.hw.getSource()
         if(ret == -1):
@@ -142,7 +147,7 @@ class Ampi():
         return(json.dumps(ret))
 
     def selectOutput(self, jcmd):
-        logger("Output: " + jcmd['Parameter'], logging)
+        logger.info("Output: {}".format(jcmd['Parameter']))
         ret = self.hw.selectOutput(jcmd['Parameter'])
         return ret
 
@@ -164,14 +169,14 @@ class Ampi():
         try:
             jcmd = json.loads(data)
         except:
-            logger("Das ist mal kein JSON, pff!", logging)
+            logger.warning("Das ist mal kein JSON, pff!")
             ret = json.dumps({"Antwort": "Kaa JSON Dings!"})
         if(jcmd['Aktion'] == "Input"):
             ret = self.selectSource(jcmd)
         elif(jcmd['Aktion'] == "Output"):
             ret = self.selectOutput(jcmd)
         elif(jcmd['Aktion'] == "Hyperion"):
-            logger("Remote hyperion control", logging)
+            logger.info("Remote hyperion control")
             ret = json.dumps({"Antwort": "Hyperion", "Szene": self.hyp.setScene()})
         elif(jcmd['Aktion'] == "Volume"):
             if jcmd['Parameter'] in self.validVolCmd:
@@ -181,7 +186,7 @@ class Ampi():
         elif(jcmd['Aktion'] == "Switch"):
             if jcmd['Parameter'] == "DimOled":
                 ret = self.hw.oled.toggleBlankScreen()
-                logger("Dim remote command toggled", logging)
+                logger.info("Dim remote command toggled")
                 if(ret):
                     ret = json.dumps({"Antwort":"Oled","Wert":"Aus"})
                 else:
@@ -191,14 +196,14 @@ class Ampi():
                 time.sleep(0.2)
                 self.hw.setSource("Aus")
                 #self.hyp.setScene("Kodi")
-                logger("Aus is fuer heit!", logging)
+                logger.info("Aus is fuer heit!")
                 ret = json.dumps({"Antwort":"Betrieb","Wert":"Aus"})
             elif jcmd['Parameter'] == "Mediacenter":
                 self.mc_restart_cnt += 1
                 ret = json.dumps({"Antwort":"Mediacenter","Wert":"BaldRestart"})
                 if self.mc_restart_cnt >= 2:
                     os.system('sudo systemctl restart mediacenter')
-                    logger("Mediaceenter wird neu gestart", logging)
+                    logger.info("Mediaceenter wird neu gestart")
                     ret = json.dumps({"Antwort":"Mediacenter","Wert":"Restart"})
             elif jcmd['Parameter'] == "Input":
                 src = self.hw.getSource()
@@ -212,15 +217,14 @@ class Ampi():
                 self.hw.setSource(self.toggleinputs[idx])
                 ret = json.dumps({"Antwort":"Input","Wert":self.toggleinputs[idx]})
             else:
-                logger("Des bassd net.", logging)
+                logger.warning("Des bassd net.")
                 ret = json.dumps({"Antwort":"Schalter","Wert":"Kein gültiges Schalter-Kommando"})
         elif(jcmd['Aktion'] == "Zustand"):
-            logger("Wos für a Zustand?")
+            logger.info("Wos für a Zustand?")
             ret = self.ampiZustand()
             #TODO: Alle Zustände lesen und ausgeben
         else:
-            logger(data, logging)
-            logger("Invalid remote command!", logging)
+            logger.warning("Invalid remote command: {}".format(data))
             ret = json.dumps({"Antwort":"Fehler","Wert":"Kein gültiges Kommando"})
         return(ret)
 
