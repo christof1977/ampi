@@ -179,6 +179,7 @@ class Ampi():
             ret = self.selectSource(jcmd)
         elif(jcmd['Aktion'] == "Output"):
             ret = self.selectOutput(jcmd)
+            ret = json.dumps({"Antwort": jcmd, "Wert": ret})
         elif(jcmd['Aktion'] == "Hyperion"):
             logger.info("Remote hyperion control")
             ret = json.dumps({"Antwort": "Hyperion", "Szene": self.hyp.setScene()})
