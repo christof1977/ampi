@@ -32,6 +32,7 @@ class Hardware():
         self.tvPwr = False
         self.oled = oled #OLED-Objekt erzeugen
         self.hyp = hyp #Hyperion-Objekt erzeugen
+        self.kodi = Kodi("http://localhost/jsonrpc")
         self.initGpios() #GPIOs initialisieren
         self.volume = Volume(self.oled, self.bus) #Volumen-Objekt erzeugen
         self.sources = Sources(self.oled, self.bus) #Quellen-Objekt erzeugen
@@ -214,17 +215,15 @@ class Hardware():
             #device = "PI:HDMI"
             device = "ALSA:sysdefault:CARD=vc4hdmi"
         try:
-            kodi = Kodi("http://localhost/jsonrpc")
-            kodi.Settings.SetSettingValue({"setting":"audiooutput.audiodevice","value":device})
-            kodi.GUI.ShowNotification({"title":"Tonausgang is etz:", "message":val})
+            self.kodi.Settings.SetSettingValue({"setting":"audiooutput.audiodevice","value":device})
+            self.kodi.GUI.ShowNotification({"title":"Tonausgang is etz:", "message":val})
             logger.debug("Kodi laaft etz auf {}".format(device))
         except Exception as e:
             logger.warning("Beim Kodiausgang umschalten is wos passiert: {}".format(str(e)))
 
     def setKodiNotification(self, title, msg):
         try:
-            kodi = Kodi("http://localhost/jsonrpc")
-            kodi.GUI.ShowNotification({"title":title, "message":msg})
+            self.kodi.GUI.ShowNotification({"title":title, "message":msg})
         except Exception as e:
             logger.warning("Beim der Kodianzeigerei is wos passiert: {}".format(str(e)))
 
@@ -286,6 +285,7 @@ class Hardware():
             self.setAmpPwr(True)
             self.ampiPwr(True)
             self.sources.setInput(src)
+            self.kodi.GUI.ActivateWindow(window="music")
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
             time.sleep(.2)
@@ -307,7 +307,7 @@ class Hardware():
             self.hyp.setScene("Off")
             time.sleep(0.1)
         else:
-            logger.idebug('Komischer Elisenzustand')
+            logger.debug('Komischer Elisenzustand')
         self.source = src
         return()
 
