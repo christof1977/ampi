@@ -64,15 +64,16 @@ class Hypctrl():
         logger.info("Setting light scene: {}".format(self.cList[self.color]))
         cmd = '/usr/bin/hyperion-remote'
         if self.color == 0:
-            args = ['-c', 'black']
+            args = ['-a', 'localhost', '-c', 'black']
             GPIO.output(self.Out_ext0, GPIO.LOW)
             self.setAlPower(False)
         elif self.color == 1:
-            args = ['-x']
+            # Selecting Kodi as input for hyperion
+            args = ['-a', 'localhost', '--clearall']
             GPIO.output(self.Out_ext0, GPIO.LOW)
             self.setAlPower(True)
         elif self.color == 2:
-            args = ['-x']
+            args = ['-a', 'localhost', '--clearall']
             cmd = '/usr/bin/hyperion-v4l2'
             args = ['-d', '/dev/video0',
                     '--input', '0',
@@ -90,13 +91,13 @@ class Hypctrl():
             self.v4l_running = True
         elif self.color == 3:
             #v4l_ret = subprocess.call(['/usr/bin/killall',  'hyperion-v4l2'])
-            args = ['-c',  self.cList[self.color+1]]
+            args = ['-a', 'localhost', '-c',  self.cList[self.color+1]]
             msg = "Farbe: "+ self.cList[self.color+1]+" und Schrank"
             GPIO.output(self.Out_ext0, GPIO.HIGH)
             self.setAlPower(True)
             #self.color += 1
         elif self.color > 3:
-            args = ['-c',  self.cList[self.color]]
+            args = ['-a', 'localhost', '-c',  self.cList[self.color]]
             msg = "Farbe: " + self.cList[self.color]
             GPIO.output(self.Out_ext0, GPIO.LOW)
             self.setAlPower(True)
