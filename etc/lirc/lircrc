@@ -46,7 +46,7 @@ prog = lircsock
 config = Volume_Up
 end
 begin
-button = KEY_F7
+button = KEY_MODE
 prog = lircsock
 config = Hyperion_
 end
