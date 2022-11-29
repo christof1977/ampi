@@ -16,9 +16,6 @@ log.addHandler(JournalHandler())
 log.setLevel(logging.INFO)
 #log.setLevel(logging.DEBUG)
 
-
-
-
 def signal_term_handler(signal, frame=""):
     log.info("Got " + str(signal))
     log.info("Closing lirc connection")
@@ -26,13 +23,11 @@ def signal_term_handler(signal, frame=""):
     log.info("So long, sucker!")
     sys.exit(0)
 
-
 def lirc2json(cmd):
     cmd = cmd.split("_")
     cmd = { "Aktion": cmd[0], "Parameter": cmd[1]}
     json_cmd = json.dumps(cmd)
     return json_cmd
-
 
 def main():
     log.info("Starting amplifier lirc remote control service")
@@ -40,7 +35,7 @@ def main():
     signal.signal(signal.SIGTERM, signal_term_handler)
     addr = 'osmd'
     port = 5005
-    sockid = lirc.init("lircsock")
+    sockid = lirc("lircsock")
     allow = lirc.set_blocking(False, sockid)
 
     while True:
