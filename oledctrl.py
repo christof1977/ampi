@@ -56,14 +56,20 @@ class AmpiOled:
             try:
                 self.lcd = Server("127.0.0.1", debug=False)
                 self.lcd.start_session()
-                run = True
+                time.sleep(.5)
+                try:
+                    #self.lcd.get_server_info()["server_version"]
+                    self.screenVol = self.lcd.add_screen("Screen_vol")
+                    run = True
+                except:
+                    run = False
             except:
                 logger.info("Waiting for LDCd ...")
                 time.sleep(.1)
                 run = False
 
 
-        self.screenVol = self.lcd.add_screen("Screen_vol")
+        #self.screenVol = self.lcd.add_screen("Screen_vol")
         self.screenVol.set_heartbeat("off")
         self.screenVol.set_priority("background")
 
