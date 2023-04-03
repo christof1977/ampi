@@ -26,7 +26,7 @@ class Hardware():
         self.inVolDir = 36
         self.inVolClk  = 7
         self.inVolMute = 15
-        self.validSources = ['Aus', 'CD', 'Schneitzlberger', 'Portable', 'Hilfssherriff', 'Bladdnspiela', 'Himbeer314']
+        self.valid_sources = ['Aus', 'CD', 'Schneitzlberger', 'Portable', 'Hilfssherriff', 'Bladdnspiela', 'Himbeer314']
         self.source = "Aus"
         self.ampPwr = False
         self.tvPwr = False
@@ -42,7 +42,7 @@ class Hardware():
 
     def stop(self):
         GPIO.cleanup()   #GPIOs aufräumen
-        logger.info("iCleanup GPIOs")
+        logger.info("Cleanup GPIOs")
         pass
 
     def initGpios(self):
@@ -79,9 +79,9 @@ class Hardware():
                 self.oled.toggleBlankScreen()
                 logger.debug("Dim switch toggled")
                 return()
-            elif src in self.validSources:
+            elif src in self.valid_sources:
                 logger.debug("Switching input to {}".format(src))
-                self.setSource(src)
+                self.set_source(src)
                 return()
             elif src == "Hyperion":
                 logger.debug("Switching hyperion to ")
@@ -165,7 +165,7 @@ class Hardware():
 
     def ampPower(self, inp):
         if inp == "off" or inp == "Schneitzlberger":
-            self.setSource(inp) #Wird eigentlich nur noch einmal aufgerufen, damit im Display der source angezeigt wird
+            self.set_source(inp) #Wird eigentlich nur noch einmal aufgerufen, damit im Display der source angezeigt wird
             if inp == "off":
                 reboot_count = reboot_count + 1
                 if reboot_count > 5:
@@ -195,13 +195,32 @@ class Hardware():
     def getHeadOut(self):
         return self.sources.getHeadOut()
 
-    def selectOutput(self, output):
-        if(output == "AmpOut"):
-            ret = self.sources.setAmpOut()
+    def get_output(self):
+        amp = self.sources.getAmpOut()
+        head = self.sources.getHeadOut()
+        if amp:
+            amp = "On"
+        else:
+            amp = "Off"
+        if head:
+            head = "On"
+        else:
+            head = "Off"
+        ret = {"Amp":amp,"Headphones":head}
+        return ret
+
+    def set_output(self, output):
+        if(output == "Amp"):
+            #ret = self.sources.setAmpOut()
+            ret = self.sources.set_output("Amp")
             logger.debug("Amp Output set remotely to {}".format(str(ret)))
-        elif(output == "HeadOut"):
-            ret = self.sources.setHeadOut()
+        elif(output == "Headphones"):
+            #ret = self.sources.setHeadOut()
+            ret = self.sources.set_output("Headphones")
             logger.debug("Headphone Output set remotely to {}".format(str(ret)))
+        elif(output == "Off"):
+            ret = self.sources.set_output("Off")
+            logger.debug("Output set remotely to {}".format(str(ret)))
         else:
             ret = -1
             logger.debug("Error: not a valid output")
@@ -227,11 +246,12 @@ class Hardware():
         except Exception as e:
             logger.warning("Beim der Kodianzeigerei is wos passiert: {}".format(str(e)))
 
-    def setSource(self, src):
+    def set_source(self, src):
         if src == "00000000":
-            return()
+            ret = -1
         elif src == self.source:
             logger.debug("Da ist nix neues dabei, ich mach mal nix")
+            ret = {"Source":self.source}
         elif src == "Schneitzlberger":
             self.setKodiAudio("digital")
             self.setTvPwr(True)
@@ -243,6 +263,8 @@ class Hardware():
             time.sleep(0.2)
             self.phonoPwr(False)
             self.hyp.setScene("Kodi")
+            self.source = src
+            ret = {"Source":self.source}
         elif src == "CD":
             self.setTvPwr(False)
             self.setAmpPwr(True)
@@ -252,6 +274,8 @@ class Hardware():
             self.oled.setMsgScreen(l1="Eingang", l3=src)
             time.sleep(.2)
             self.phonoPwr(False)
+            self.source = src
+            ret = {"Source":self.source}
         elif src == "Portable":
             self.setTvPwr(False)
             self.setAmpPwr(True)
@@ -261,6 +285,8 @@ class Hardware():
             self.oled.setMsgScreen(l1="Eingang", l3=src)
             time.sleep(.2)
             self.phonoPwr(False)
+            self.source = src
+            ret = {"Source":self.source}
         elif src == "Hilfssherriff":
             self.setTvPwr(False)
             self.setAmpPwr(True)
@@ -270,6 +296,8 @@ class Hardware():
             self.oled.setMsgScreen(l1="Eingang", l3=src)
             time.sleep(.2)
             self.phonoPwr(False)
+            self.source = src
+            ret = {"Source":self.source}
         elif src == "Bladdnspiela":
             self.setTvPwr(False)
             self.setAmpPwr(True)
@@ -279,6 +307,8 @@ class Hardware():
             self.sources.setInput(src)
             self.setKodiNotification("Ampi-Eingang", src)
             self.oled.setMsgScreen(l1="Eingang", l3=src)
+            self.source = src
+            ret = {"Source":self.source}
         elif src == "Himbeer314":
             self.setKodiAudio("analog")
             self.setTvPwr(False)
@@ -290,6 +320,8 @@ class Hardware():
             self.oled.setMsgScreen(l1="Eingang", l3=src)
             time.sleep(.2)
             self.phonoPwr(False)
+            self.source = src
+            ret = {"Source":self.source}
         elif src == "Aus":
             self.setKodiAudio("digital")
             time.sleep(0.2)
@@ -306,10 +338,12 @@ class Hardware():
             time.sleep(0.2)
             self.hyp.setScene("Off")
             time.sleep(0.1)
+            self.source = src
+            ret = {"Source":self.source}
         else:
             logger.debug('Komischer Elisenzustand')
-        self.source = src
-        return()
+            ret = -1
+        return ret
 
     def getSource(self):
         return(self.source)

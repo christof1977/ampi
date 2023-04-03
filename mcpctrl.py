@@ -40,6 +40,25 @@ class Sources():
         self.t_stop = threading.Event()
         self.clearMcpInt()
 
+    def set_output(self, output):
+        if output == "Amp":
+            ret = self.setAmpOut(True)
+            if ret:
+                ret = "Amp"
+            else:
+                ret = -1
+        elif output == "Headphones":
+            ret = self.setHeadOut(True)
+            if ret:
+                ret = "Headphones"
+            else:
+                ret = -1
+        else:
+            self.setAmpOut(False)
+            self.setHeadOut(False)
+            ret = "Off"
+        return ret
+
     def setAmpOut(self, *args):
         # Amp-Bit: 0x40
         state = self.getMcpOut()
@@ -66,7 +85,7 @@ class Sources():
         return self.ampState
 
     def setHeadOut(self, *args):
-        # Amp-Bit: 0x80
+        # Head-Bit: 0x80
         state = self.getMcpOut()
         if args:
             self.headState = not args[0]
