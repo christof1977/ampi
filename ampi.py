@@ -41,7 +41,13 @@ if(__name__ == "__main__"):
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 else:
-    logger = logging.getLogger(__name__)
+    #logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger("Ampi")
+    handler = logging.handlers.SysLogHandler(address = '/dev/log')
+    formatter = logging.Formatter('Ampi: %(module)s: %(levelname)s: %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 class Ampi():
     def __init__(self):
@@ -60,7 +66,7 @@ class Ampi():
 
         time.sleep(1.1) #Short break to make sure the display is cleaned
 
-        self.hw.setSource("Aus")  #Set initial source to Aus
+        self.hw.set_source("Aus")  #Set initial source to Aus
         self.mc_restart_cnt = 0
         self.t_stop = threading.Event()
         self.clearTimer()
@@ -83,7 +89,7 @@ class Ampi():
         logger.info("Got " + str(signal))
         logger.info("Closing UDP Socket")
         self.udpSock.close() #UDP-Server abschiessen
-        self.hw.setSource("Aus") #Preamp schlafen legen
+        self.hw.set_source("Aus") #Preamp schlafen legen
         self.hw.stop()
 
         logger.info("So long sucker!") #Fein auf Wiedersehen sagen
@@ -108,7 +114,6 @@ class Ampi():
         server = socketserver.TCPServer((eth_addr, tcp_port), MyTCPSocketHandler)
         server.serve_forever()
 
-
     def udpServer(self):
         logger.info("Starting UDP-Server at {}:{}".format(eth_addr, udp_port))
         self.udpSock = socket.socket( socket.AF_INET,  socket.SOCK_DGRAM )
@@ -129,7 +134,6 @@ class Ampi():
             except Exception as e:
                 logger.warning("Uiui, beim UDP senden/empfangen hat's kracht: {}".format(str(e)))
 
-
     def stopKodiPlayer(self):
         try:
             kodi = Kodi("http://localhost/jsonrpc")
@@ -138,24 +142,44 @@ class Ampi():
             logger.info("Kodi aus!")
         except Exception as e:
             logger.warning("Beim Kodi stoppen is wos passiert: {}".format(str(e)))
+            logger.warning(e)
 
-    def selectSource(self, jcmd):
-        logger.info("Input: {}".format(jcmd['Parameter']))
-        logger.info("Source set remotely to {}".format(jcmd['Parameter']))
-        self.hw.setSource(jcmd['Parameter'])
-        ret = self.hw.getSource()
+    def get_sources(self):
+        '''Returns list of available sources
+        '''
+        return json.dumps({"Available Sources":self.hw.valid_sources})
+
+    def get_source(self):
+        '''Returns list of valid sources
+        '''
+        return json.dumps({"Source":self.hw.getSource()})
+
+    def set_source(self, source):
+        logger.info("Input: {}".format(source))
+        logger.info("Source set remotely to {}".format(source))
+        ret = self.hw.set_source(source)
+        #ret = self.hw.getSource()
+        logging.info(ret)
         if(ret == -1):
-            ret = {"Antwort":"bassd net","Input":ret}
+            ret = {"Answer":"Error"}
         else:
-            ret = {"Antwort":"bassd","Input":ret}
+            ret["Answer"] = "Success"
         return(json.dumps(ret))
 
-    def selectOutput(self, jcmd):
-        logger.info("Output: {}".format(jcmd['Parameter']))
-        ret = self.hw.selectOutput(jcmd['Parameter'])
-        return ret
+    def get_output(self):
+        ret = self.hw.get_output()
+        return(json.dumps(ret))
 
-    def ampiZustand(self):
+    def set_output(self, output):
+        logger.info("Output: {}".format(output))
+        ret = self.hw.set_output(output)
+        if ret == -1:
+            ret = {"Answer":"Error"}
+        else:
+            ret = {"Answer":"Success", "Output":ret}
+        return(json.dumps(ret))
+
+    def status(self):
         zustand  = json.dumps({"Antwort" : "Zustand",
                                "Input" : self.hw.getSource(),
                                "Hyperion" : self.hyp.getScene(),
@@ -176,16 +200,16 @@ class Ampi():
             logger.warning("Das ist mal kein JSON, pff!")
             ret = json.dumps({"Antwort": "Kaa JSON Dings!"})
         if(jcmd['Aktion'] == "Input"):
-            ret = self.selectSource(jcmd)
+            ret = self.set_source(jcmd["Parameter"])
         elif(jcmd['Aktion'] == "Output"):
-            ret = self.selectOutput(jcmd)
+            ret = self.set_output(jcmd["Parameter"])
             ret = json.dumps({"Antwort": jcmd, "Wert": ret})
         elif(jcmd['Aktion'] == "Hyperion"):
             logger.info("Remote hyperion control")
             ret = json.dumps({"Antwort": "Hyperion", "Szene": self.hyp.setScene()})
         elif(jcmd['Aktion'] == "Volume"):
             if jcmd['Parameter'] in self.validVolCmd:
-                ret = self.setVolume(jcmd['Parameter'])
+                ret = self.set_volume(jcmd['Parameter'])
             else:
                 ret = json.dumps({"Antwort": "Kein echtes Volumen-Kommando"})
         elif(jcmd['Aktion'] == "Switch"):
@@ -199,7 +223,7 @@ class Ampi():
             elif jcmd['Parameter'] == "Power":
                 self.stopKodiPlayer()
                 time.sleep(0.2)
-                self.hw.setSource("Aus")
+                self.hw.set_source("Aus")
                 #self.hyp.setScene("Kodi")
                 logger.info("Aus is fuer heit!")
                 ret = json.dumps({"Antwort":"Betrieb","Wert":"Aus"})
@@ -219,34 +243,54 @@ class Ampi():
                         idx = 0
                 except ValueError:
                     idx = 0
-                self.hw.setSource(self.toggleinputs[idx])
+                self.hw.set_source(self.toggleinputs[idx])
                 ret = json.dumps({"Antwort":"Input","Wert":self.toggleinputs[idx]})
             else:
                 logger.warning("Des bassd net.")
                 ret = json.dumps({"Antwort":"Schalter","Wert":"Kein gültiges Schalter-Kommando"})
         elif(jcmd['Aktion'] == "Zustand"):
             logger.info("Wos für a Zustand?")
-            ret = self.ampiZustand()
+            ret = self.status()
             #TODO: Alle Zustände lesen und ausgeben
         else:
             logger.warning("Invalid remote command: {}".format(data))
             ret = json.dumps({"Antwort":"Fehler","Wert":"Kein gültiges Kommando"})
         return(ret)
 
+    def get_alive(self):
+        '''Returns alive signal
+        '''
+        dt = datetime.datetime.now()
+        dts = "{:02d}:{:02d}:{:02d}".format(dt.hour, dt.minute, dt.second)
+        return(json.dumps({"name":"ampi","answer":"Freilich", "time" : dts}))
 
+    def get_volume(self):
+        ret = {"Answer":"Volume","Volume" : self.hw.volume.getVolume()}
+        return(json.dumps(ret))
 
-    def setVolume(self, val):
-        if(val == "Up"):
+    def set_volume(self, val):
+        logger.info(val)
+        if(val in ["Up", "up", "UP"]):
             ret = self.hw.volume.incVolumePot()
-        elif(val == "Down"):
+        elif(val in ["Down", "down", "DOWN"]):
             ret = self.hw.volume.decVolumePot()
         else:
             ret = self.hw.volume.toggleMute()
         if(ret == -1):
-            ret = {"Antwort":"bassd net","Input":ret}
+            ret = {"Answer":"bassd net","Input":ret}
         else:
-            ret = {"Antwort":"bassd","Input":ret}
+            ret = {"Answer":"bassd","Input":ret}
         return(json.dumps(ret))
+
+    def run(self):
+        while True:
+            try:
+                time.sleep(1)
+                pass
+            except KeyboardInterrupt: # CTRL+C exit
+                self.signal_term_handler(99, "") #Aufrufen des Signal-Handlers, in der Funktion wird das Programm sauber beendet
+                break
+
 
 
 
@@ -260,7 +304,6 @@ def main():
         except KeyboardInterrupt: # CTRL+C exit
             ampi.signal_term_handler(99, "") #Aufrufen des Signal-Handlers, in der Funktion wird das Programm sauber beendet
             break
-
 
 
 

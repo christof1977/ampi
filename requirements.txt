@@ -1,0 +1,16 @@
+RPi.GPIO
+smbus
+smbus2
+pyserial
+i2cdevice
+simplejson
+paho-mqtt
+flask
+flask_restful
+flask-marshmallow
+marshmallow
+gunicorn
+python-prctl
+Flask-Markdown
+kodi-json
+lcdproc
