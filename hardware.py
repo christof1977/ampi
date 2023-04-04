@@ -79,6 +79,9 @@ class Hardware():
                 self.oled.toggleBlankScreen()
                 logger.debug("Dim switch toggled")
                 return()
+            elif src == "Aus":
+                self.stopKodiPlayer()
+                self.setSource(src)
             elif src in self.validSources:
                 logger.debug("Switching input to {}".format(src))
                 self.setSource(src)
@@ -226,6 +229,16 @@ class Hardware():
             self.kodi.GUI.ShowNotification({"title":title, "message":msg})
         except Exception as e:
             logger.warning("Beim der Kodianzeigerei is wos passiert: {}".format(str(e)))
+
+    def stopKodiPlayer(self):
+        try:
+            playerid = self.kodi.Player.GetActivePlayers()["result"][0]["playerid"]
+            result = self.kodi.Player.Stop({"playerid": playerid})
+            logger.info("Kodi aus!")
+        except Exception as e:
+            logger.warning("Beim Kodi stoppen is wos passiert: {}".format(str(e)))
+
+
 
     def setSource(self, src):
         if src == "00000000":
