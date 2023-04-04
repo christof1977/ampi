@@ -145,7 +145,7 @@ class Sources():
         elif intcap == 0x20:
            ret = "Hyperion"
         elif intcap == 0x10:
-           ret = "DimOled"
+           ret = "Aus"
         else:
            ret = "Error"
         return(ret)
