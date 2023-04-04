@@ -37,7 +37,6 @@ class Source(Resource):
         source = request.args.get("set")
         return json.loads(self.ampi.set_source(source))
 
-
 class Output(Resource):
     def __init__(self, **kwargs):
         self.ampi = kwargs['ampi']
@@ -48,3 +47,14 @@ class Output(Resource):
     def put(self):
         output = request.args.get("set")
         return json.loads(self.ampi.set_output(output))
+
+class Volume(Resource):
+    def __init__(self, **kwargs):
+        self.ampi = kwargs['ampi']
+
+    def get(self):
+        return json.loads(self.ampi.get_volume())
+
+    def put(self):
+        vol = request.args.get("vol")
+        return json.loads(self.ampi.set_volume(vol))

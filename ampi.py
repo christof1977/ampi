@@ -209,7 +209,7 @@ class Ampi():
             ret = json.dumps({"Antwort": "Hyperion", "Szene": self.hyp.setScene()})
         elif(jcmd['Aktion'] == "Volume"):
             if jcmd['Parameter'] in self.validVolCmd:
-                ret = self.setVolume(jcmd['Parameter'])
+                ret = self.set_volume(jcmd['Parameter'])
             else:
                 ret = json.dumps({"Antwort": "Kein echtes Volumen-Kommando"})
         elif(jcmd['Aktion'] == "Switch"):
@@ -264,17 +264,22 @@ class Ampi():
         dts = "{:02d}:{:02d}:{:02d}".format(dt.hour, dt.minute, dt.second)
         return(json.dumps({"name":"ampi","answer":"Freilich", "time" : dts}))
 
-    def setVolume(self, val):
-        if(val == "Up"):
+    def get_volume(self):
+        ret = {"Answer":"Volume","Volume" : self.hw.volume.getVolume()}
+        return(json.dumps(ret))
+
+    def set_volume(self, val):
+        logger.info(val)
+        if(val in ["Up", "up", "UP"]):
             ret = self.hw.volume.incVolumePot()
-        elif(val == "Down"):
+        elif(val in ["Down", "down", "DOWN"]):
             ret = self.hw.volume.decVolumePot()
         else:
             ret = self.hw.volume.toggleMute()
         if(ret == -1):
-            ret = {"Antwort":"bassd net","Input":ret}
+            ret = {"Answer":"bassd net","Input":ret}
         else:
-            ret = {"Antwort":"bassd","Input":ret}
+            ret = {"Answer":"bassd","Input":ret}
         return(json.dumps(ret))
 
     def run(self):
