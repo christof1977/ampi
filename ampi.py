@@ -269,7 +269,10 @@ class Ampi():
         return(json.dumps(ret))
 
     def set_volume(self, val):
-        logger.info(val)
+        try:
+            logger.info("Set volume to " + val)
+        except:
+            logger.error("Err while printing log in set_volume")
         if(val in ["Up", "up", "UP"]):
             ret = self.hw.volume.incVolumePot()
         elif(val in ["Down", "down", "DOWN"]):
@@ -277,9 +280,9 @@ class Ampi():
         else:
             ret = self.hw.volume.toggleMute()
         if(ret == -1):
-            ret = {"Answer":"bassd net","Input":ret}
+            ret = {"Answer":"bassd net","Volume":ret}
         else:
-            ret = {"Answer":"bassd","Input":ret}
+            ret = {"Answer":"bassd","Volume":ret}
         return(json.dumps(ret))
 
     def run(self):
