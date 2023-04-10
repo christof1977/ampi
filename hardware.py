@@ -81,7 +81,7 @@ class Hardware():
                 return()
             elif src == "Aus":
                 self.stopKodiPlayer()
-                self.setSource(src)
+                self.set_source(src)
             elif src in self.valid_sources:
                 logger.debug("Switching input to {}".format(src))
                 self.set_source(src)
