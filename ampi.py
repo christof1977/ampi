@@ -206,7 +206,7 @@ class Ampi():
             ret = json.dumps({"Answer": jcmd, "Value": ret})
         elif(jcmd['Aktion'] == "Hyperion"):
             logger.info("Remote hyperion control")
-            ret = json.dumps({"Answer": "Hyperion", "Scene": self.hyp.setScene()})
+            ret = json.dumps({"Answer": "Hyperion", "Scene": self.hyp.toggle_scene()})
         elif(jcmd['Aktion'] == "Volume"):
             if jcmd['Parameter'] in self.validVolCmd:
                 ret = self.set_volume(jcmd['Parameter'])
@@ -224,7 +224,7 @@ class Ampi():
                 self.stopKodiPlayer()
                 time.sleep(0.2)
                 self.hw.set_source("Aus")
-                #self.hyp.setScene("Kodi")
+                #self.hyp.toggle_scene("Kodi")
                 logger.info("Aus is fuer heit!")
                 ret = json.dumps({"Answer":"Betrieb","Value":"Off"})
             elif jcmd['Parameter'] == "Mediacenter":
@@ -283,6 +283,28 @@ class Ampi():
             ret = {"Answer":"bassd net","Volume":ret}
         else:
             ret = {"Answer":"bassd","Volume":ret}
+        return(json.dumps(ret))
+
+    def get_schrank_light(self):
+        ret =  self.hyp.get_schrank_light()
+        if ret:
+            ret = {"Answer":"Schranklight","State":"on"}
+        else:
+            ret = {"Answer":"Schranklight","State":"off"}
+        return(json.dumps(ret))
+
+    def set_schrank_light(self):
+        ret = self.hyp.set_schrank_light()
+        if ret:
+            ret = {"Answer":"Schranklight","State":"on"}
+        else:
+            ret = {"Answer":"Schranklight","State":"off"}
+        return(json.dumps(ret))
+
+    def set_al_color(self, color):
+        logger.debug(color)
+        ret = self.hyp.set_al_color(color)
+        ret = {"Answer":"AmbilightColor","Color":ret}
         return(json.dumps(ret))
 
     def run(self):

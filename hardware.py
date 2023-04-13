@@ -81,6 +81,7 @@ class Hardware():
                 return()
             elif src == "Aus":
                 self.stopKodiPlayer()
+                logger.info("Aus is")
                 self.set_source(src)
             elif src in self.valid_sources:
                 logger.debug("Switching input to {}".format(src))
@@ -334,6 +335,7 @@ class Hardware():
             self.source = src
             ret = {"Source":self.source}
         elif src == "Aus":
+            self.stopKodiPlayer()
             self.setKodiAudio("digital")
             time.sleep(0.2)
             self.oled.setMsgScreen(l1="Servusla.", l3="Alles aus etz!")

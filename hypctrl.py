@@ -4,6 +4,7 @@ import time
 import os
 import subprocess
 from subprocess import DEVNULL
+import re
 from kodijson import Kodi
 import RPi.GPIO as GPIO
 import logging
@@ -18,6 +19,7 @@ class Hypctrl():
         self.oled = oled
         self.cList = ["Off", "Kodi", "BluRay", "Schrank", "FF8600", "red" , "green"]
         self.color = 0
+        self.al_color = "#000000"
         self.Out_ext0 = 8 # Relais fuer Schranklicht (benutzt Pin TXD)
         self.OutAlPower = 22 # Relais fuer Ampilight-Power
         GPIO.setwarnings(False)
@@ -35,18 +37,66 @@ class Hypctrl():
         except Exception as e:
             logger.warning("Beim der Kodianzeigerei is wos passiert: {}".format(str(e)))
 
-    def setAlPower(self, val=False):
+    def set_al_power(self, val=False):
+        '''Sets the state of the ambilight power and returns the current state  (True/false)
+        '''
         if(val):
             GPIO.output(self.OutAlPower, GPIO.HIGH) # Ambilicht an
         else:
             GPIO.output(self.OutAlPower, GPIO.LOW) # Ambilicht aus
-        return self.getAlPower()
+        return self.get_al_power()
 
-    def getAlPower(self):
+    def get_al_power(self):
+        '''Return the state of the ambilight power (True/false)
+        '''
         return GPIO.input(self.OutAlPower) # nachschauen, ob Ambilicht Strom hat oder aa net
 
+    def set_schrank_light(self, val=None):
+        '''Toggles the Schrank licht and returns the current state (True/False)
+        '''
+        if(val is None):
+            GPIO.output(self.Out_ext0, not GPIO.input(self.Out_ext0))
+        return self.get_schrank_light()
 
-    def setScene(self, col=None):
+    def get_schrank_light(self):
+        '''Returns if the Schrank Licht is on or off (True/False)
+        '''
+        return GPIO.input(self.Out_ext0)
+
+    def set_al_color(self, color):
+        logger.debug(color)
+        if(re.search(r'^#(?:[0-9a-fA-F]{3}){1,2}$', color)):
+            args = ['-a', 'localhost', '-c',  color]
+            self.set_al_power(True)
+            self.al_color = color
+        if(color=="#000000"):
+            args = ['-a', 'localhost', '-c', 'black']
+            self.set_al_power(False)
+        cmd = '/usr/bin/hyperion-remote'
+        try:
+            hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
+        except:
+            logger.warning("hyperion-remote ist kaputt!")
+
+        return self.get_al_color()
+
+    def get_al_color(self):
+        return self.al_color
+
+    def set_scene(self, scene, par=None):
+        #if Off:
+
+        #elif Kodi:
+
+        #elif BlueRay:
+
+
+        #str = '#ffffff' # Your Hex
+
+        pass
+
+
+    def toggle_scene(self, col=None):
         if(self.v4l_running):
             v4l_ret = subprocess.call(['/usr/bin/killall',  'hyperion-v4l2'])
             self.v4l_running = False
@@ -66,12 +116,12 @@ class Hypctrl():
         if self.color == 0:
             args = ['-a', 'localhost', '-c', 'black']
             GPIO.output(self.Out_ext0, GPIO.LOW)
-            self.setAlPower(False)
+            self.set_al_power(False)
         elif self.color == 1:
             # Selecting Kodi as input for hyperion
             args = ['-a', 'localhost', '--clearall']
             GPIO.output(self.Out_ext0, GPIO.LOW)
-            self.setAlPower(True)
+            self.set_al_power(True)
         elif self.color == 2:
             args = ['-a', 'localhost', '--clearall']
             cmd = '/usr/bin/hyperion-v4l2'
@@ -87,20 +137,20 @@ class Hypctrl():
                     '--blue-threshold', '0.1'
                     ]
             GPIO.output(self.Out_ext0, GPIO.LOW)
-            self.setAlPower(True)
+            self.set_al_power(True)
             self.v4l_running = True
         elif self.color == 3:
             #v4l_ret = subprocess.call(['/usr/bin/killall',  'hyperion-v4l2'])
             args = ['-a', 'localhost', '-c',  self.cList[self.color+1]]
             msg = "Farbe: "+ self.cList[self.color+1]+" und Schrank"
             GPIO.output(self.Out_ext0, GPIO.HIGH)
-            self.setAlPower(True)
+            self.set_al_power(True)
             #self.color += 1
         elif self.color > 3:
             args = ['-a', 'localhost', '-c',  self.cList[self.color]]
             msg = "Farbe: " + self.cList[self.color]
             GPIO.output(self.Out_ext0, GPIO.LOW)
-            self.setAlPower(True)
+            self.set_al_power(True)
         try:
             hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
         except:
@@ -119,9 +169,9 @@ def main():
     from oledctrl import AmpiOled
     oled = AmpiOled()
     hyp = Hypctrl(oled=oled)
-    #hyp.setScene(color=3)
+    #hyp.toggle_scene(color=3)
     for i in range(7):
-        hyp.setScene()
+        hyp.toggle_scene()
         print(hyp.getScene())
         time.sleep(2)
 
