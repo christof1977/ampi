@@ -73,9 +73,9 @@ class Ambilight(Resource):
     def __init__(self, **kwargs):
         self.ampi = kwargs['ampi']
 
-    #def get(self):
-    #    return json.loads(self.ampi.get_schrank_light())
+    def get(self):
+        return json.loads(self.ampi.get_al())
 
     def put(self):
-        col = request.args.get("col")
-        return json.loads(self.ampi.set_al_color(col))
+        return(json.loads(self.ampi.set_al(request.args)))
+

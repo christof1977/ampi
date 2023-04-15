@@ -41,8 +41,8 @@ if(__name__ == "__main__"):
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 else:
-    #logging.basicConfig(level=logging.INFO)
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
+    #logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger("Ampi")
     handler = logging.handlers.SysLogHandler(address = '/dev/log')
     formatter = logging.Formatter('Ampi: %(module)s: %(levelname)s: %(message)s')
@@ -301,10 +301,31 @@ class Ampi():
             ret = {"Answer":"Schranklight","State":"off"}
         return(json.dumps(ret))
 
-    def set_al_color(self, color):
-        logger.debug(color)
-        ret = self.hyp.set_al_color(color)
-        ret = {"Answer":"AmbilightColor","Color":ret}
+    def get_al(self):
+        ret = {"Answer":"Ambilight",
+               "Color": self.hyp.get_al_color(),
+               "Brightness":self.hyp.get_al_brightness(),
+               "Power": self.hyp.get_al_power()}
+        return(json.dumps(ret))
+
+    def set_al(self, args):
+        color = None
+        brightness = None
+        ret_col = ""
+        ret_bri = ""
+        for arg in args:
+            if(arg=="color"):
+                color = args["color"]
+            if(arg=="brightness"):
+                brightness = args["brightness"]
+        if(color is not None):
+            ret_col = self.hyp.set_al_color(color)
+        if(brightness is not None):
+            ret_bri = self.hyp.set_al_brightness(brightness)
+        ret = {"Answer":"Ambilight",
+               "Color":ret_col,
+               "Brightness":ret_bri,
+               "Power":self.hyp.get_al_power()}
         return(json.dumps(ret))
 
     def run(self):

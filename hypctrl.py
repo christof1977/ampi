@@ -20,6 +20,7 @@ class Hypctrl():
         self.cList = ["Off", "Kodi", "BluRay", "Schrank", "FF8600", "red" , "green"]
         self.color = 0
         self.al_color = "#000000"
+        self.al_brightness = 100
         self.Out_ext0 = 8 # Relais fuer Schranklicht (benutzt Pin TXD)
         self.OutAlPower = 22 # Relais fuer Ampilight-Power
         GPIO.setwarnings(False)
@@ -64,24 +65,82 @@ class Hypctrl():
         return GPIO.input(self.Out_ext0)
 
     def set_al_color(self, color):
-        logger.debug(color)
-        if(re.search(r'^#(?:[0-9a-fA-F]{3}){1,2}$', color)):
-            args = ['-a', 'localhost', '-c',  color]
-            self.set_al_power(True)
-            self.al_color = color
-        if(color=="#000000"):
+        if(color is None):
+            return("Ambilight: Doing nothing")
+        elif(color in ["000000", "#000000", "off", "Off", "OFF"]):
+            msg = "off"
+            color = "black"
             args = ['-a', 'localhost', '-c', 'black']
-            self.set_al_power(False)
+            pwr = False
+        elif(re.search(r'^(?:[0-9a-fA-F]{3}){1,2}$', color)):
+            #Check, if color is in hex format without leading "#"
+            color = "#" + color
+            msg = color
+            args = ['-a', 'localhost', '-c',  color]
+            pwr = True
+        elif(re.search(r'^#(?:[0-9a-fA-F]{3}){1,2}$', color)):
+            #Check, if color is in hex format with leading "#"
+            msg = color
+            args = ['-a', 'localhost', '-c',  color]
+            pwr = True
+        else:
+            msg = color
+            args = ['-a', 'localhost', '-c',  color]
+            pwr = True
         cmd = '/usr/bin/hyperion-remote'
         try:
             hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
-        except:
-            logger.warning("hyperion-remote ist kaputt!")
-
+            while hyp.poll() is None:
+                # Process hasn't exited yet, let's wait some
+                time.sleep(0.1)
+            # Get return code from process
+            return_code = hyp.returncode
+            if(return_code == 0):
+                logger.info("Ambilight: " + color)
+                self.set_al_power(pwr)
+                self.al_color = color
+            else:
+                logger.info("Ambilight: color not valid or other error")
+        except Exception as e:
+            logger.error(e)
+            logger.error("hyperion-remote ist kaputt!")
         return self.get_al_color()
 
     def get_al_color(self):
         return self.al_color
+
+    def set_al_brightness(self, brightness):
+        try:
+            brightness = int(brightness)
+        except:
+            ret = "Brightness value must be an integer between 0 and 100"
+        if(brightness in range(0,101)):
+            cmd = '/usr/bin/hyperion-remote'
+            try:
+                args = ['-a', 'localhost', '-L',  str(brightness)]
+                hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
+                while hyp.poll() is None:
+                    # Process hasn't exited yet, let's wait some
+                    time.sleep(0.1)
+                # Get return code from process
+                return_code = hyp.returncode
+                if(return_code == 0):
+                    logger.info("Ambilight Brightness: " + str(brightness))
+                    self.al_brightness = brightness
+                    ret = self.get_al_brightness()
+                else:
+                    logger.warning("Ambilight: something strange happened")
+                    ret = "Something strange happened"
+            except Exception as e:
+                logger.error(e)
+                logger.error("hyperion-remote ist kaputt!")
+                ret = "Hyperion-remote is broken or so"
+        else:
+            ret = "Brightness value must be between 0 and 100"
+        return ret
+
+    def get_al_brightness(self):
+        return str(self.al_brightness)
 
     def set_scene(self, scene, par=None):
         #if Off:
