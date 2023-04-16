@@ -77,42 +77,29 @@ class Hypctrl():
         elif(color in ["000000", "#000000", "off", "Off", "OFF", "black"]):
             msg = "off"
             color = "black"
-            args = ['-a', 'localhost', '-c', 'black']
             pwr = False
         elif(re.search(r'^(?:[0-9a-fA-F]{3}){1,2}$', color)):
             #Check, if color is in hex format without leading "#"
             color = "#" + color
             msg = color
-            args = ['-a', 'localhost', '-c',  color]
             pwr = True
         elif(re.search(r'^#(?:[0-9a-fA-F]{3}){1,2}$', color)):
             #Check, if color is in hex format with leading "#"
             msg = color
-            args = ['-a', 'localhost', '-c',  color]
             pwr = True
         else:
             msg = color
-            args = ['-a', 'localhost', '-c',  color]
             pwr = True
-        cmd = '/usr/bin/hyperion-remote'
-        try:
-            #Call hyperion.remote with parameters and wait for exit code
-            hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
-            while hyp.poll() is None:
-                # Process hasn't exited yet, let's wait some
-                time.sleep(0.1)
-            # Get return code from process
-            return_code = hyp.returncode
-            if(return_code == 0): #Everything went fine
-                logger.info("Ambilight: " + color)
-                self.set_al_power(pwr)
-                self.al_color = color
-            else: # Shit happend during execution of hyperion-remote
-                logger.info("Ambilight: color not valid or other error")
-        except Exception as e:
-            logger.error(e)
-            logger.error("hyperion-remote ist kaputt!")
-        return self.get_al_color()
+        ret = self.hyperion_remote(['-c', color])
+        if(ret == 0): #Everything went fine
+            logger.info("Ambilight: " + color)
+            self.set_al_power(pwr)
+            self.al_color = color
+            ret = self.get_al_color()
+        else: # Shit happend during execution of hyperion-remote
+            logger.info("Ambilight: color not valid or other error")
+            ret = "Color not valid or other error"
+        return ret
 
     def get_al_color(self):
         '''Returns current stored amibilight color
@@ -172,32 +159,36 @@ class Hypctrl():
         except:
             ret = "Brightness value must be an integer between 0 and 100"
         if(brightness in range(0,101)):
-            cmd = '/usr/bin/hyperion-remote'
-            try:
-                args = ['-a', 'localhost', '-L',  str(brightness)]
-                hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
-                while hyp.poll() is None:
-                    # Process hasn't exited yet, let's wait some
-                    time.sleep(0.1)
-                # Get return code from process
-                return_code = hyp.returncode
-                if(return_code == 0):
-                    logger.info("Ambilight Brightness: " + str(brightness))
-                    self.al_brightness = brightness
-                    ret = self.get_al_brightness()
-                else:
-                    logger.warning("Ambilight: something strange happened")
-                    ret = "Something strange happened"
-            except Exception as e:
-                logger.error(e)
-                logger.error("hyperion-remote ist kaputt!")
-                ret = "Hyperion-remote is broken or so"
+            brightness = str(brightness)
+            ret = self.hyperion_remote(['-L', brightness])
+            if(ret == 0):
+                logger.info("Ambilight Brightness: " + brightness)
+                self.al_brightness = brightness
+                ret = self.get_al_brightness()
+            else:
+                logger.warning("Ambilight: something strange happened")
+                ret = "Something strange happened"
         else:
             ret = "Brightness value must be between 0 and 100"
         return ret
 
     def get_al_brightness(self):
         return str(self.al_brightness)
+
+    def hyperion_remote(self, arglist):
+        cmd = '/usr/bin/hyperion-remote'
+        try:
+            args = ['-a', 'localhost'] + arglist
+            hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
+            while hyp.poll() is None:
+                # Process hasn't exited yet, let's wait some
+                time.sleep(0.1)
+            # Return with return code from process
+            return hyp.returncode
+        except Exception as e:
+            logger.error(e)
+            logger.error("hyperion-remote ist kaputt!")
+            return 1
 
     def set_scene(self, scene, par=None):
         #if Off:
