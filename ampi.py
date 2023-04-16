@@ -293,8 +293,11 @@ class Ampi():
             ret = {"Answer":"Schranklight","State":"off"}
         return(json.dumps(ret))
 
-    def set_schrank_light(self):
-        ret = self.hyp.set_schrank_light()
+    def set_schrank_light(self, args):
+        try:
+            ret = self.hyp.set_schrank_light(args["state"])
+        except:
+            ret = self.hyp.set_schrank_light()
         if ret:
             ret = {"Answer":"Schranklight","State":"on"}
         else:

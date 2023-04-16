@@ -20,6 +20,10 @@ class Hypctrl():
     def __init__(self, oled=None):
         self.oled = oled
         self.cList = ["Off", "Kodi", "BluRay", "Schrank", "FF8600", "red" , "green"]
+        self.modes = {"Off":{},
+                       "Kodi":{},
+                       "BluRay":{},
+                       "Reading":{}}
         self.color = 0
         self.al_color = "#000000"
         self.al_brightness = 100
@@ -54,11 +58,22 @@ class Hypctrl():
         '''
         return GPIO.input(self.OutAlPower) # nachschauen, ob Ambilicht Strom hat oder aa net
 
-    def set_schrank_light(self, val=None):
-        '''Toggles the Schrank licht and returns the current state (True/False)
+    def set_schrank_light(self, *args):
+        '''Sets the Schrank licht and returns the current state (True/False)
+        If no argument is given, light will be toggled.
+        If the argument is "On" or "Off", light will be set on or off.
         '''
-        if(val is None):
+        if(len(args)==0):
             GPIO.output(self.Out_ext0, not GPIO.input(self.Out_ext0))
+        elif(len(args)==1):
+            val = args[0]
+            logger.info(val)
+            if(val in ["on", "On", "ON"]):
+                GPIO.output(self.Out_ext0, GPIO.HIGH)
+            else:
+                GPIO.output(self.Out_ext0, GPIO.LOW)
+        else:
+            return "Error"
         return self.get_schrank_light()
 
     def get_schrank_light(self):
@@ -173,9 +188,15 @@ class Hypctrl():
         return ret
 
     def get_al_brightness(self):
+        '''Returns the set brightness of Ambilight
+        '''
         return str(self.al_brightness)
 
     def hyperion_remote(self, arglist):
+        '''Function to call hyperion-remote.
+        arglist ist a list of parameter, which will be given to hyperion-remote, e.g. ["-c", "red"]
+        Waits for the process to be finsihed and returns the retrn code of hyperion-remote
+        '''
         cmd = '/usr/bin/hyperion-remote'
         try:
             args = ['-a', 'localhost'] + arglist
@@ -190,7 +211,10 @@ class Hypctrl():
             logger.error("hyperion-remote ist kaputt!")
             return 1
 
-    def set_scene(self, scene, par=None):
+    def set_mode(self, mode):
+        if(mode in ["off", "Off", "OFF"]):
+            set_schrank_light(False)
+
         #if Off:
 
         #elif Kodi:
@@ -230,6 +254,7 @@ class Hypctrl():
             GPIO.output(self.Out_ext0, GPIO.LOW)
             self.set_al_power(True)
         elif self.color == 2:
+            # Selecting BluRay as input for hyperion
             args = ['-a', 'localhost', '--clearall']
             cmd = '/usr/bin/hyperion-v4l2'
             args = ['-d', '/dev/video0',
