@@ -8,6 +8,8 @@ import re
 from kodijson import Kodi
 import RPi.GPIO as GPIO
 import logging
+import colorsys
+import webcolors
 
 # create logger
 logger = logging.getLogger(__name__)
@@ -65,9 +67,14 @@ class Hypctrl():
         return GPIO.input(self.Out_ext0)
 
     def set_al_color(self, color):
+        '''Set ambligith color.
+        If color is black, #000000, off or similar, Ambilight power is turned off an color is set to black.
+        Color parameter can be a color name (https://wiki.selfhtml.org/wiki/Grafik/Farbe/Farbpaletten) or a hex color code with or without leading # symbol
+        hyperion-remote is used to set color.
+        '''
         if(color is None):
             return("Ambilight: Doing nothing")
-        elif(color in ["000000", "#000000", "off", "Off", "OFF"]):
+        elif(color in ["000000", "#000000", "off", "Off", "OFF", "black"]):
             msg = "off"
             color = "black"
             args = ['-a', 'localhost', '-c', 'black']
@@ -89,17 +96,18 @@ class Hypctrl():
             pwr = True
         cmd = '/usr/bin/hyperion-remote'
         try:
+            #Call hyperion.remote with parameters and wait for exit code
             hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
             while hyp.poll() is None:
                 # Process hasn't exited yet, let's wait some
                 time.sleep(0.1)
             # Get return code from process
             return_code = hyp.returncode
-            if(return_code == 0):
+            if(return_code == 0): #Everything went fine
                 logger.info("Ambilight: " + color)
                 self.set_al_power(pwr)
                 self.al_color = color
-            else:
+            else: # Shit happend during execution of hyperion-remote
                 logger.info("Ambilight: color not valid or other error")
         except Exception as e:
             logger.error(e)
@@ -107,9 +115,58 @@ class Hypctrl():
         return self.get_al_color()
 
     def get_al_color(self):
+        '''Returns current stored amibilight color
+        '''
         return self.al_color
 
+    def get_al_rgb(self):
+        '''Returns RGB color representation string
+        '''
+        color = webcolors.html5_parse_legacy_color(self.al_color)
+        (r,g,b)=[x/255 for x in color]
+        r = int(r * 255)
+        g = int(g * 255)
+        b = int(b * 255)
+        return str(r) + "," + str(g) + "," + str(b)
+
+    def set_al_rgb(self, rgb):
+        '''Accepts RGB values as csv string. Float values will be truncated. RGB value is transformed to HEX, ambilight color will be set accordingly.
+
+        '''
+        if(type(rgb)==tuple):
+            ret = "Tuple not implemented yet"
+            pass
+        elif(type(rgb)==str):
+            try:
+                rgb = rgb.split(",")
+                rgb = [int(x) for x in rgb]
+                rgb = webcolors.rgb_to_hex(rgb)
+                ret = self.set_al_color(rgb)
+            except Exception as e:
+                logging.warning(e)
+                logging.warning("Ups")
+                ret = "RGB value not a valid string"
+        else:
+            logging.warning("Not of type tuple nore string")
+            ret = "RGB value not of type tuple nore string"
+        return ret
+
+    def get_al_hsv(self):
+        '''Returns Ambilight color as HSV string
+        '''
+        color = webcolors.html5_parse_legacy_color(self.al_color)
+        (r,g,b)=[x/255 for x in color]
+        h,s,v = colorsys.rgb_to_hsv(r,g,b)
+        h = int(h * 360)
+        s = int(s * 100)
+        v = int(v * 100)
+        return str(h) + "," + str(s) + "," + str(v)
+
     def set_al_brightness(self, brightness):
+        '''Sets Ambilight brightness
+        Accepts values between 0 and 100.
+        hyperion-remote is used to set brightness.
+        '''
         try:
             brightness = int(brightness)
         except:

@@ -305,12 +305,15 @@ class Ampi():
         ret = {"Answer":"Ambilight",
                "Color": self.hyp.get_al_color(),
                "Brightness":self.hyp.get_al_brightness(),
-               "Power": self.hyp.get_al_power()}
+               "Power": self.hyp.get_al_power(),
+               "RGB":self.hyp.get_al_rgb(),
+               "HSV":self.hyp.get_al_hsv()}
         return(json.dumps(ret))
 
     def set_al(self, args):
         color = None
         brightness = None
+        rgb = None
         ret_col = ""
         ret_bri = ""
         for arg in args:
@@ -318,10 +321,15 @@ class Ampi():
                 color = args["color"]
             if(arg=="brightness"):
                 brightness = args["brightness"]
+            if(arg=="rgb"):
+                rgb = args["rgb"]
         if(color is not None):
             ret_col = self.hyp.set_al_color(color)
         if(brightness is not None):
             ret_bri = self.hyp.set_al_brightness(brightness)
+        if(rgb is not None):
+            logging.info("Setting RGB values to {}".format(rgb))
+            ret_rgb = self.hyp.set_al_rgb(rgb)
         ret = {"Answer":"Ambilight",
                "Color":ret_col,
                "Brightness":ret_bri,
