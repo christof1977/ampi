@@ -20,11 +20,8 @@ class Hypctrl():
     def __init__(self, oled=None):
         self.oled = oled
         self.cList = ["Off", "Kodi", "BluRay", "Schrank", "FF8600", "red" , "green"]
-        self.modes = {"Off":{},
-                       "Kodi":{},
-                       "BluRay":{},
-                       "Reading":{}}
         self.color = 0
+        self.mode = "off"
         self.al_color = "#000000"
         self.al_brightness = 100
         self.Out_ext0 = 8 # Relais fuer Schranklicht (benutzt Pin TXD)
@@ -212,20 +209,20 @@ class Hypctrl():
             return 1
 
     def set_mode(self, mode):
-        if(mode in ["off", "Off", "OFF"]):
-            set_schrank_light(False)
+        if(mode in ["Kodi","BluRay"]):
+            self.set_al_color("off")
+            args = ['--clearall']
+            self.set_al_power(True)
+            self.hyperion_remote(args)
+            self.mode = "Ambilight"
+        else:
+            self.set_schrank_light("off")
+            self.set_al_color("off")
+            self.mode = "Off"
+        return self.get_mode()
 
-        #if Off:
-
-        #elif Kodi:
-
-        #elif BlueRay:
-
-
-        #str = '#ffffff' # Your Hex
-
-        pass
-
+    def get_mode(self):
+        return self.mode
 
     def toggle_scene(self, col=None):
         if(self.v4l_running):

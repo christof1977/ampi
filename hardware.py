@@ -89,7 +89,7 @@ class Hardware():
                 return()
             elif src == "Hyperion":
                 logger.debug("Switching hyperion to ")
-                self.hyp.set_scene()
+                self.hyp.toggle_scene()
                 return()
         elif channel == self.inVolClk: # Drehn am Rädle
             if GPIO.input(self.inVolDir): # Linksrum drehn
@@ -274,7 +274,7 @@ class Hardware():
             self.oled.setMsgScreen(l1="Eingang", l3=src)
             time.sleep(0.2)
             self.phonoPwr(False)
-            self.hyp.set_scene("Kodi")
+            self.hyp.set_mode("Kodi")
             self.source = src
             ret = {"Source":self.source}
         elif src == "CD":
@@ -349,7 +349,7 @@ class Hardware():
             time.sleep(0.5)
             self.setTvPwr(False)
             time.sleep(0.2)
-            self.hyp.set_scene("Off")
+            self.hyp.set_mode("Off")
             time.sleep(0.1)
             self.source = src
             ret = {"Source":self.source}

@@ -67,7 +67,7 @@ class SchrankLight(Resource):
         return json.loads(self.ampi.get_schrank_light())
 
     def put(self):
-        return json.loads(self.ampi.set_schrank_light())
+        return json.loads(self.ampi.set_schrank_light(request.args))
 
 class Ambilight(Resource):
     def __init__(self, **kwargs):
