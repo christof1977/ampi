@@ -196,6 +196,11 @@ class Hypctrl():
         '''
         cmd = '/usr/bin/hyperion-remote'
         try:
+            args = ['--clearall', 'localhost']
+            hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
+            while hyp.poll() is None:
+                # Process hasn't exited yet, let's wait some
+                time.sleep(0.1)
             args = ['-a', 'localhost'] + arglist
             hyp = subprocess.Popen([cmd, *args], stdout=DEVNULL, stderr=DEVNULL)
             while hyp.poll() is None:
