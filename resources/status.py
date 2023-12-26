@@ -58,3 +58,24 @@ class Volume(Resource):
     def put(self):
         vol = request.args.get("vol")
         return json.loads(self.ampi.set_volume(vol))
+
+class SchrankLight(Resource):
+    def __init__(self, **kwargs):
+        self.ampi = kwargs['ampi']
+
+    def get(self):
+        return json.loads(self.ampi.get_schrank_light())
+
+    def put(self):
+        return json.loads(self.ampi.set_schrank_light(request.args))
+
+class Ambilight(Resource):
+    def __init__(self, **kwargs):
+        self.ampi = kwargs['ampi']
+
+    def get(self):
+        return json.loads(self.ampi.get_al())
+
+    def put(self):
+        return(json.loads(self.ampi.set_al(request.args)))
+

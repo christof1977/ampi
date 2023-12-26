@@ -13,4 +13,5 @@ gunicorn
 python-prctl
 Flask-Markdown
 kodi-json
+webcolors
 lcdproc

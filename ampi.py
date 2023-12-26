@@ -41,8 +41,8 @@ if(__name__ == "__main__"):
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 else:
-    #logging.basicConfig(level=logging.INFO)
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
+    #logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger("Ampi")
     handler = logging.handlers.SysLogHandler(address = '/dev/log')
     formatter = logging.Formatter('Ampi: %(module)s: %(levelname)s: %(message)s')
@@ -180,7 +180,7 @@ class Ampi():
         return(json.dumps(ret))
 
     def status(self):
-        zustand  = json.dumps({"Antwort" : "Zustand",
+        zustand  = json.dumps({"Answer" : "Zustand",
                                "Input" : self.hw.getSource(),
                                "Hyperion" : self.hyp.getScene(),
                                "Volume" : self.hw.volume.getVolume(),
@@ -198,42 +198,42 @@ class Ampi():
             jcmd = json.loads(data)
         except:
             logger.warning("Das ist mal kein JSON, pff!")
-            ret = json.dumps({"Antwort": "Kaa JSON Dings!"})
+            ret = json.dumps({"Answer": "Not a valid JSON String"})
         if(jcmd['Aktion'] == "Input"):
             ret = self.set_source(jcmd["Parameter"])
         elif(jcmd['Aktion'] == "Output"):
             ret = self.set_output(jcmd["Parameter"])
-            ret = json.dumps({"Antwort": jcmd, "Wert": ret})
+            ret = json.dumps({"Answer": jcmd, "Value": ret})
         elif(jcmd['Aktion'] == "Hyperion"):
             logger.info("Remote hyperion control")
-            ret = json.dumps({"Antwort": "Hyperion", "Szene": self.hyp.setScene()})
+            ret = json.dumps({"Answer": "Hyperion", "Scene": self.hyp.toggle_scene()})
         elif(jcmd['Aktion'] == "Volume"):
             if jcmd['Parameter'] in self.validVolCmd:
                 ret = self.set_volume(jcmd['Parameter'])
             else:
-                ret = json.dumps({"Antwort": "Kein echtes Volumen-Kommando"})
+                ret = json.dumps({"Answer": "Kein echtes Volumen-Kommando"})
         elif(jcmd['Aktion'] == "Switch"):
             if jcmd['Parameter'] == "DimOled":
                 ret = self.hw.oled.toggleBlankScreen()
                 logger.info("Dim remote command toggled")
                 if(ret):
-                    ret = json.dumps({"Antwort":"Oled","Wert":"Aus"})
+                    ret = json.dumps({"Answer":"Oled","Value":"Aus"})
                 else:
-                    ret = json.dumps({"Antwort":"Oled","Wert":"An"})
+                    ret = json.dumps({"Answer":"Oled","Value":"An"})
             elif jcmd['Parameter'] == "Power":
                 self.stopKodiPlayer()
                 time.sleep(0.2)
                 self.hw.set_source("Aus")
-                #self.hyp.setScene("Kodi")
+                #self.hyp.toggle_scene("Kodi")
                 logger.info("Aus is fuer heit!")
-                ret = json.dumps({"Antwort":"Betrieb","Wert":"Aus"})
+                ret = json.dumps({"Answer":"Betrieb","Value":"Off"})
             elif jcmd['Parameter'] == "Mediacenter":
                 self.mc_restart_cnt += 1
-                ret = json.dumps({"Antwort":"Mediacenter","Wert":"BaldRestart"})
+                ret = json.dumps({"Answer":"Mediacenter","Value":"BaldRestart"})
                 if self.mc_restart_cnt >= 2:
                     os.system('sudo systemctl restart mediacenter')
                     logger.info("Mediaceenter wird neu gestart")
-                    ret = json.dumps({"Antwort":"Mediacenter","Wert":"Restart"})
+                    ret = json.dumps({"Answer":"Mediacenter","Value":"Restart"})
             elif jcmd['Parameter'] == "Input":
                 src = self.hw.getSource()
                 try:
@@ -244,17 +244,17 @@ class Ampi():
                 except ValueError:
                     idx = 0
                 self.hw.set_source(self.toggleinputs[idx])
-                ret = json.dumps({"Antwort":"Input","Wert":self.toggleinputs[idx]})
+                ret = json.dumps({"Answer":"Input","Value":self.toggleinputs[idx]})
             else:
                 logger.warning("Des bassd net.")
-                ret = json.dumps({"Antwort":"Schalter","Wert":"Kein gültiges Schalter-Kommando"})
+                ret = json.dumps({"Answer":"Schalter","Value":"Kein gültiges Schalter-Kommando"})
         elif(jcmd['Aktion'] == "Zustand"):
             logger.info("Wos für a Zustand?")
             ret = self.status()
             #TODO: Alle Zustände lesen und ausgeben
         else:
             logger.warning("Invalid remote command: {}".format(data))
-            ret = json.dumps({"Antwort":"Fehler","Wert":"Kein gültiges Kommando"})
+            ret = json.dumps({"Answer":"Fehler","Wert":"Kein gültiges Kommando"})
         return(ret)
 
     def get_alive(self):
@@ -269,7 +269,10 @@ class Ampi():
         return(json.dumps(ret))
 
     def set_volume(self, val):
-        logger.info(val)
+        try:
+            logger.info("Set volume to " + val)
+        except:
+            logger.error("Err while printing log in set_volume")
         if(val in ["Up", "up", "UP"]):
             ret = self.hw.volume.incVolumePot()
         elif(val in ["Down", "down", "DOWN"]):
@@ -277,9 +280,63 @@ class Ampi():
         else:
             ret = self.hw.volume.toggleMute()
         if(ret == -1):
-            ret = {"Answer":"bassd net","Input":ret}
+            ret = {"Answer":"bassd net","Volume":ret}
         else:
-            ret = {"Answer":"bassd","Input":ret}
+            ret = {"Answer":"bassd","Volume":ret}
+        return(json.dumps(ret))
+
+    def get_schrank_light(self):
+        ret =  self.hyp.get_schrank_light()
+        if ret:
+            ret = {"Answer":"Schranklight","State":"on"}
+        else:
+            ret = {"Answer":"Schranklight","State":"off"}
+        return(json.dumps(ret))
+
+    def set_schrank_light(self, args):
+        try:
+            ret = self.hyp.set_schrank_light(args["state"])
+        except:
+            ret = self.hyp.set_schrank_light()
+        if ret:
+            ret = {"Answer":"Schranklight","State":"on"}
+        else:
+            ret = {"Answer":"Schranklight","State":"off"}
+        return(json.dumps(ret))
+
+    def get_al(self):
+        ret = {"Answer":"Ambilight",
+               "Color": self.hyp.get_al_color(),
+               "Brightness":self.hyp.get_al_brightness(),
+               "Power": self.hyp.get_al_power(),
+               "RGB":self.hyp.get_al_rgb(),
+               "HSV":self.hyp.get_al_hsv()}
+        return(json.dumps(ret))
+
+    def set_al(self, args):
+        color = None
+        brightness = None
+        rgb = None
+        ret_col = ""
+        ret_bri = ""
+        for arg in args:
+            if(arg=="color"):
+                color = args["color"]
+            if(arg=="brightness"):
+                brightness = args["brightness"]
+            if(arg=="rgb"):
+                rgb = args["rgb"]
+        if(color is not None):
+            ret_col = self.hyp.set_al_color(color)
+        if(brightness is not None):
+            ret_bri = self.hyp.set_al_brightness(brightness)
+        if(rgb is not None):
+            logging.info("Setting RGB values to {}".format(rgb))
+            ret_rgb = self.hyp.set_al_rgb(rgb)
+        ret = {"Answer":"Ambilight",
+               "Color":ret_col,
+               "Brightness":ret_bri,
+               "Power":self.hyp.get_al_power()}
         return(json.dumps(ret))
 
     def run(self):

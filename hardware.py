@@ -81,14 +81,15 @@ class Hardware():
                 return()
             elif src == "Aus":
                 self.stopKodiPlayer()
-                self.setSource(src)
+                logger.info("Aus is")
+                self.set_source(src)
             elif src in self.valid_sources:
                 logger.debug("Switching input to {}".format(src))
                 self.set_source(src)
                 return()
             elif src == "Hyperion":
                 logger.debug("Switching hyperion to ")
-                self.hyp.setScene()
+                self.hyp.toggle_scene()
                 return()
         elif channel == self.inVolClk: # Drehn am Rädle
             if GPIO.input(self.inVolDir): # Linksrum drehn
@@ -273,7 +274,7 @@ class Hardware():
             self.oled.setMsgScreen(l1="Eingang", l3=src)
             time.sleep(0.2)
             self.phonoPwr(False)
-            self.hyp.setScene("Kodi")
+            self.hyp.set_mode("Kodi")
             self.source = src
             ret = {"Source":self.source}
         elif src == "CD":
@@ -334,6 +335,7 @@ class Hardware():
             self.source = src
             ret = {"Source":self.source}
         elif src == "Aus":
+            self.stopKodiPlayer()
             self.setKodiAudio("digital")
             time.sleep(0.2)
             self.oled.setMsgScreen(l1="Servusla.", l3="Alles aus etz!")
@@ -347,7 +349,7 @@ class Hardware():
             time.sleep(0.5)
             self.setTvPwr(False)
             time.sleep(0.2)
-            self.hyp.setScene("Off")
+            self.hyp.set_mode("Off")
             time.sleep(0.1)
             self.source = src
             ret = {"Source":self.source}
