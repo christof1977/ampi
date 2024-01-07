@@ -278,7 +278,11 @@ class Ampi():
         elif(val in ["Down", "down", "DOWN"]):
             ret = self.hw.volume.decVolumePot()
         else:
-            ret = self.hw.volume.toggleMute()
+            try:
+                val = int(val)
+                ret = self.hw.volume.setVolumePot(val)
+            except:
+                ret = self.hw.volume.toggleMute()
         if(ret == -1):
             ret = {"Answer":"bassd net","Volume":ret}
         else:
