@@ -232,11 +232,9 @@ class Hardware():
 
     def setKodiAudio(self, val):
         if(val == "analog"):
-            #device = "ALSA:@"
-            device = "ALSA:sysdefault:CARD=sndrpihifiberry"
+            device = "ALSA:sysdefault:CARD=sndrpihifiberry|snd_rpi_hifiberry_dacplus"
         else:
-            #device = "PI:HDMI"
-            device = "ALSA:sysdefault:CARD=vc4hdmi"
+            device = "ALSA:hdmi:CARD=vc4hdmi,DEV=0|vc4-hdmi"
         try:
             self.kodi.Settings.SetSettingValue({"setting":"audiooutput.audiodevice","value":device})
             self.kodi.GUI.ShowNotification({"title":"Tonausgang is etz:", "message":val})
