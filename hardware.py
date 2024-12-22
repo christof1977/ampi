@@ -259,9 +259,6 @@ class Hardware():
     def set_source(self, src):
         if src == "00000000":
             ret = -1
-        elif src == self.source:
-            logger.debug("Da ist nix neues dabei, ich mach mal nix")
-            ret = {"Source":self.source}
         elif src == "Schneitzlberger":
             self.setKodiAudio("digital")
             self.setTvPwr(True)
