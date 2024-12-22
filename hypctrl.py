@@ -80,12 +80,16 @@ class Hypctrl():
 
     def set_al_color(self, color):
         '''Set ambligith color.
-        If color is black, #000000, off or similar, Ambilight power is turned off an color is set to black.
+        If color is black, #000000, off or similar, Ambilight power is turned off an color is set to black, if color is "kodi", ambilight mode is set to video grabbing.
         Color parameter can be a color name (https://wiki.selfhtml.org/wiki/Grafik/Farbe/Farbpaletten) or a hex color code with or without leading # symbol
         hyperion-remote is used to set color.
         '''
         if(color is None):
             return("Ambilight: Doing nothing")
+        elif(color in ["kodi", "KODI", "kodi", "bluray", "BluRay", "Bluray", "BLURAY"]):
+            msg = "Kodi"
+            pwr = True
+            color = "Kodi"
         elif(color in ["000000", "#000000", "off", "Off", "OFF", "black"]):
             msg = "off"
             color = "black"
@@ -102,8 +106,11 @@ class Hypctrl():
         else:
             msg = color
             pwr = True
-        ret = self.hyperion_remote(['-c', color])
-        if(ret == 0): #Everything went fine
+        if(color == "Kodi"):
+            ret = self.set_mode(color)
+        else:
+            ret = self.hyperion_remote(['-c', color])
+        if(ret == 0 or ret == "Ambilight"): #Everything went fine
             logger.info("Ambilight: " + color)
             self.set_al_power(pwr)
             self.al_color = color
