@@ -146,8 +146,8 @@ class Hypctrl():
             try:
                 rgb = rgb.split(",")
                 rgb = [int(x) for x in rgb]
-                rgb = webcolors.rgb_to_hex(rgb)
-                ret = self.set_al_color(rgb)
+                hexcolor = webcolors.rgb_to_hex(rgb)
+                ret = self.set_al_color(hexcolor)
             except Exception as e:
                 logging.warning(e)
                 logging.warning("Ups")
@@ -166,7 +166,35 @@ class Hypctrl():
         h = int(h * 360)
         s = int(s * 100)
         v = int(v * 100)
+        #logging.info("h,s,v: {} {} {}".format(h,s,v))
         return str(h) + "," + str(s) + "," + str(v)
+
+    def set_al_hsv(self, hsv):
+        '''Accepts HSV values as csv string. Float values will be truncated. HSV value is transformed to RGB and finally to HEX, ambilight color will be set accordingly.
+
+        '''
+        if(type(hsv)==tuple):
+            ret = "Tuple not implemented yet"
+            pass
+        elif(type(hsv)==str):
+            try:
+                hsv = hsv.split(",")
+                hsv = [int(x) for x in hsv]
+                h,s,v = hsv
+                h = h/360
+                s = s/100
+                v = v/100
+                rgb = tuple(round(i * 255) for i in colorsys.hsv_to_rgb(h,s,v))
+                hexcolor = webcolors.rgb_to_hex(rgb)
+                ret = self.set_al_color(hexcolor)
+            except Exception as e:
+                logging.warning(e)
+                logging.warning("Ups")
+                ret = "RGB value not a valid string"
+        else:
+            logging.warning("Not of type tuple nore string")
+            ret = "RGB value not of type tuple nore string"
+        return ret
 
     def set_al_brightness(self, brightness):
         '''Sets Ambilight brightness
