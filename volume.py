@@ -33,8 +33,6 @@ class Volume():
             logger.info("63 wiper")
         self.volIsolator(0) # Disable Volume I2C-Bus-Isolator
 
-
-
     def volIsolator(self, status):
         # Mit dieser Funktion wird der DS1882 auf den I2C-Bus geschaltet (1) oder vom Bus getrennt (0)
         if status == 1:
@@ -44,6 +42,7 @@ class Volume():
         return()
 
     def setVolumePot(self, value, display=True):
+        value = abs(value)
         if(value > self.minVol):
             return(-1)
         elif(self.volPotVal < 0):
@@ -98,9 +97,7 @@ class Volume():
         return(self.volPotVal)
 
     def getVolume(self):
-        return(self.volPotVal)
-
-
+        return(self.volPotVal*-1)
 
 
 def main():
